@@ -1,0 +1,36 @@
+diff --git a/scripts/hooks/gateguard-fact-force.js b/scripts/hooks/gateguard-fact-force.js
+index bb800d28..50a91bfd 100644
+--- a/scripts/hooks/gateguard-fact-force.js
++++ b/scripts/hooks/gateguard-fact-force.js
+@@ -59,6 +59,10 @@ const ECC_ENABLE_VALUES = new Set(['1', 'true', 'on', 'enabled', 'enable', 'yes'
+ // "drop table" no longer triggers a false positive.
+ const DESTRUCTIVE_SQL_DD = /\b(drop\s+table|delete\s+from|truncate|dd\s+if=)\b/i;
+ 
++// SQL clients whose -c/-e/--command style flags commonly carry a quoted
++// literal SQL statement (ECC #3024 patch scope guard).
++const SQL_CLIENT_BASENAMES = new Set(['psql', 'mysql', 'mysql5', 'mariadb', 'sqlite3', 'sqlite']);
++
+ // Operator-supplied additional destructive patterns. Lazily compiled from
+ // `GATEGUARD_BASH_EXTRA_DESTRUCTIVE` (regex source) on first use, then
+ // memoized keyed by the env-var value so a test or long-running process
+@@ -842,6 +846,20 @@ function isDestructiveBash(command) {
+   // quoted-find-exec, and sh/bash -c bypasses (GHSA-4v57-ph3x-gf55).
+   if (isDestructiveQuoteAware(executable)) return true;
+ 
++  // SQL check on quote-aware DEQUOTED segments (content kept, quote chars
++  // dropped), scoped to known SQL client invocations only — every check
++  // above tests stripQuotedStrings() output, which replaces quoted content
++  // with empty quotes, so `psql -c "DROP TABLE x"` never reached
++  // DESTRUCTIVE_SQL_DD (ECC #3024). Deliberately narrower than a blanket
++  // dequoted scan: an unscoped version also flags a commit message that
++  // merely mentions "drop table" in prose (regressed an existing test).
++  // Local patch — reapply after ECC updates until upstream lands a fix.
++  for (const tokens of quoteAwareSegments(executable)) {
++    if (tokens.length === 0) continue;
++    if (!SQL_CLIENT_BASENAMES.has(commandBasename(tokens[0]))) continue;
++    if (DESTRUCTIVE_SQL_DD.test(tokens.join(' '))) return true;
++  }
++
+   return false;
+ }
+ 

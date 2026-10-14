@@ -1,0 +1,48 @@
+# ~/.claude dotfiles — ALLOWLIST: ignore everything, then re-include tracked config.
+# Safest default for a dir full of runtime state + secrets.
+
+/*
+
+# --- tracked top-level config ---
+!/.gitignore
+!/README.md
+!/CLAUDE.md
+!/AGENTS.md
+!/agents/
+!/commands/
+!/hooks/
+!/skills/
+!/bootstrap/
+!/settings.json
+!/projects/
+
+# settings.local.json stays machine-local (project-specific permission grants) — never synced.
+
+# --- hooks: track the custom scripts, drop runtime logs ---
+/hooks/.logs/
+
+# --- skills: drop cloud-synced + Orca junction reparse points ---
+/skills/synced/
+/skills/computer-use/
+/skills/orca-cli/
+/skills/orchestration/
+
+# --- plugins: not tracked. ECC is its own git clone with local mods, re-created by
+#     bootstrap/setup.ps1 (clone pinned commit + apply ecc-local.patch). Marketplace
+#     plugins are reinstalled via bootstrap/plugins.ps1. ---
+
+# --- projects: only this machine's auto-memory, nothing else ---
+/projects/*
+!/projects/C--Users-tasde--claude/
+/projects/C--Users-tasde--claude/*
+!/projects/C--Users-tasde--claude/memory/
+
+# --- hard safety nets (belt-and-suspenders; these must NEVER be pushed) ---
+.credentials.json
+*.credentials.json
+*.log
+*.key
+*.pem
+*-cache.json
+settings.local.json
+settings.json.bak*
