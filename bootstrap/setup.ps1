@@ -1,5 +1,5 @@
 # One-time laptop setup after `git clone` into ~/.claude.
-# Usage (from the cloned ~/.claude):  pwsh ./bootstrap/setup.ps1
+# Usage (from the cloned ~/.claude):  powershell -ExecutionPolicy Bypass -File ./bootstrap/setup.ps1
 # Prereqs: Node.js (for ECC + hooks) and the `claude` CLI installed.
 
 $ErrorActionPreference = 'Stop'

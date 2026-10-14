@@ -1,6 +1,7 @@
 # Reinstall marketplace plugins on a fresh machine.
 # Derived from installed_plugins.json + known_marketplaces.json on the source PC (2026-10-14).
-# Run AFTER `claude` is installed and you have logged in.  Usage:  pwsh ./bootstrap/plugins.ps1
+# Run AFTER `claude` is installed and you have logged in.
+# Usage:  powershell -ExecutionPolicy Bypass -File ./bootstrap/plugins.ps1
 
 $ErrorActionPreference = 'Continue'
 

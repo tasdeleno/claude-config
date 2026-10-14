@@ -27,11 +27,11 @@ git clone https://github.com/tasdeleno/claude-config .claude
 
 # 2. One-time setup: ECC npm install + memory placement
 cd .claude
-pwsh ./bootstrap/setup.ps1
+powershell -ExecutionPolicy Bypass -File ./bootstrap/setup.ps1
 
 # 3. Log in (re-syncs account-bound skills/plugins), then reinstall marketplace plugins
 claude            # log in
-pwsh ./bootstrap/plugins.ps1
+powershell -ExecutionPolicy Bypass -File ./bootstrap/plugins.ps1
 ```
 
 Orca hooks (`~/.orca/agent-hooks/claude-hook.cmd`) live outside this repo — install the
