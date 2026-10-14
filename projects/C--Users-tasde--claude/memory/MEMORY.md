@@ -12,3 +12,4 @@
 - [SiberSelma sadece bilgi](siberselma-sadece-bilgi.md) — SiberSelma MCP aktif tarama araçları çalıştırılmaz, yalnızca bilgi/danışma araçları
 - [outside-view-reviewer + doc hook](outside-view-reviewer-ve-doc-hook.md) — plan sonrası dış görüş agent'ı (bağlayıcı kural) + Stop hook ile doc-updater zorlaması, dedupe mantığı
 - [GateGuard destructive Bash mekanizması](gateguard-destructive-bash-mekanizmasi.md) — komut METNİ hash'ine göre bloklar, path exemption yok; rm -rf yerine rm -f/find -delete kullan
+- [claude-config dotfiles](claude-config-dotfiles.md) — ~/.claude git reposu (tasdeleno/claude-config), makineler arası senkron, restore adımları, taşınabilirlik tuzakları
