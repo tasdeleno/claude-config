@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 5751a595-9189-46ec-ae01-730475ce5f18
-  modified: 2026-10-16T09:45:28.045Z
+  modified: 2026-10-16T10:03:37.526Z
 ---
 
 2026-10-14: `~/.claude` taşınabilir git dotfiles reposuna alındı → **tasdeleno/claude-config** (private, `main`). Amaç: bu PC (`C:\Users\tasde`) ile laptop (`C:\Users\X`) arası setup senkronu.
@@ -21,6 +21,9 @@ metadata:
 **ECC özel:** kendi `.git`'i olduğu için repoya gömülmedi (git gitlink/submodule yapıyor, laptopta boş gelir; submodule yerel değişikliği taşımaz). `bootstrap/setup.ps1` pinli commit `9ac593b5`'ten clone + `bootstrap/ecc-local.patch` (gateguard-fact-force.js SQL tespiti yerel değişikliği) apply + `npm install`. ECC'nin kendi ff-only güncelleme akışı korunur. Bkz [[ecc-kurulumu]].
 
 **Auto-memory portability:** CC memory'yi `projects/<cwd-encoded>/memory`'den okur; encoding `C:\Users\X\.claude` → `C--Users-X--claude` (`: \ / .` → `-`). Repo'daki kopya `C--Users-tasde--claude` altında; `setup.ps1` laptopun kendi encoding'ine kopyalar.
+
+**Tam kurulum/bakım rehberi:** `bootstrap/KURULUM.md` (Türkçe; README'den atıflı) — kurulum
+değiştiğinde (yeni önkoşul, yeni adım, yeni sync mesajı) bu dosyayı da güncelle.
 
 **Herhangi bir PC'de restore:** `~/.claude`'u `.bak`'e taşı → `git clone https://github.com/tasdeleno/claude-config .claude` → `powershell -ExecutionPolicy Bypass -File bootstrap/setup.ps1` → `claude` (login) → `... bootstrap/plugins.ps1`. Önkoşul: Git for Windows, Node 22+, Python, `gh auth login`. Orca hook'larını Orca app kendisi ekler.
 

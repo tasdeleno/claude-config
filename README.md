@@ -4,6 +4,11 @@ My Claude Code setup — synced across machines via git. Works on any Windows ma
 username: committed paths use `$HOME` (Claude Code runs hook commands in Git Bash or
 PowerShell — both expand `$HOME`, neither expands `%USERPROFILE%`).
 
+> **Full setup & maintenance guide (Turkish): [`bootstrap/KURULUM.md`](bootstrap/KURULUM.md)** —
+> prerequisites, fresh install, updating an already-cloned machine, `/brag` full mode, how the
+> automatic sync works and what its messages mean, portable `settings.json`, memory sync, ECC pin
+> upgrades, adding/removing plugins, verification, troubleshooting, eval set, known limits.
+
 ## What's tracked
 - `CLAUDE.md`, `AGENTS.md` — global instructions
 - `agents/`, `commands/`, `hooks/` — custom agents, slash commands, hooks
@@ -24,6 +29,8 @@ via `bootstrap/plugins.ps1`; the local ECC plugin is re-cloned + patched by
 `bootstrap/setup.ps1` (pinned commit + `ecc-local.patch`).
 
 ## Restore on a new machine
+Short version below; details, the already-cloned-machine case (e.g. the laptop) and
+troubleshooting are in [`bootstrap/KURULUM.md`](bootstrap/KURULUM.md) §3–§4.
 ```powershell
 # 1. Clone into ~/.claude (back up any existing one first)
 cd $HOME
@@ -67,4 +74,5 @@ After the one-time restore above, every Claude Code **session start** runs
   (local changes blocking a pull, diverged branches, failed push)
 
 So: commit here → next session on the other machine picks it up (restart Claude Code to load
-changed settings/agents). Disable with `CLAUDE_CONFIG_SYNC=off`.
+changed settings/agents). Disable with `CLAUDE_CONFIG_SYNC=off`. What each `[config-sync]`
+message means and how to fix it: [`bootstrap/KURULUM.md`](bootstrap/KURULUM.md) §6.
