@@ -93,5 +93,27 @@ if ($changed.Count -gt 0) {
     $msgs += "[config-sync] bootstrap changed ($($changed -join ', ')); re-running in background, log: $state\bootstrap.log"
 }
 
+# 5) Plugin versions vs bootstrap/plugins.lock.json: WARN only, never update. The message tells Claude
+#    the safe procedure (CLAUDE.md "Plugin Guncelleme"); updating is the user's call.
+$lockFile = Join-Path $PSScriptRoot 'plugins.lock.json'
+if (Test-Path $lockFile) {
+    $installed = @{}
+    try { (claude plugin list --json 2>$null | ConvertFrom-Json) | ForEach-Object { $installed[$_.id] = "$($_.version)" } } catch { }
+    if ($installed.Count -gt 0) {   # ponytail: CLI missing/failing -> skip silently; plugins.ps1 reports install problems
+        $behind = @(); $ahead = @(); $lock = $null
+        try { $lock = Get-Content $lockFile -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop }
+        catch { $msgs += "[config-sync] bootstrap/plugins.lock.json could not be read (version check skipped): $($_.Exception.Message)" }
+        foreach ($prop in @($lock.PSObject.Properties | Where-Object { $lock })) {
+            $id = $prop.Name; $want = "$($prop.Value)"
+            if (-not $installed.ContainsKey($id) -or $installed[$id] -eq $want) { continue }   # missing = plugins.ps1's job
+            $have = $installed[$id]; $hv = $null; $wv = $null
+            if ([version]::TryParse($have, [ref]$hv) -and [version]::TryParse($want, [ref]$wv) -and $hv -gt $wv) { $ahead += "$id $have (lock $want)" }
+            else { $behind += "$id $have (lock $want)" }
+        }
+        if ($behind.Count) { $msgs += "[config-sync] plugin version behind/different from bootstrap/plugins.lock.json: $($behind -join '; '). Tell the user; do NOT update unless asked. If asked, follow CLAUDE.md 'Plugin Guncelleme' (only 'claude plugin update <id>'; never touch agents/, skills/, hooks/, CLAUDE.md, settings.json or plugins/cache)." }
+        if ($ahead.Count)  { $msgs += "[config-sync] plugin newer here than bootstrap/plugins.lock.json: $($ahead -join '; '). If intended, run 'bootstrap/plugins.ps1 -Record' and commit so other machines get the warning." }
+    }
+}
+
 if ($msgs.Count -gt 0) { $msgs -join "`n" }
 exit 0

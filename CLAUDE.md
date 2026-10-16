@@ -58,6 +58,15 @@ Commit mesajı **detaylı** olacak: `git log` tek başına okunduğunda "ne değ
 
 Kapanışta `Co-Authored-By` ve `Claude-Session` satırları. Çok satırlı mesajı `git commit -F -` + heredoc ile ver (`-m` zincirleme değil).
 
+# Plugin Güncelleme (bağlayıcı kural)
+Oturum başında `[config-sync] plugin version behind/different ...` uyarısı görürsen kullanıcıya tek satırda bildir; **kullanıcı istemedikçe güncelleme yapma**. Güncelleme istendiğinde kullanıcının özel yöntem ve kurallarının üzerine yazmamak için:
+- Yalnız `claude plugin marketplace update <marketplace>` + `claude plugin update <plugin>@<marketplace>` kullan. Plugin cache'ini (`~/.claude/plugins/cache/`) elle düzenleme; plugin dosyalarını `~/.claude/agents|skills|commands|hooks`'a kopyalama; `npx skills add`, `hyperframes skills update` gibi araçlarla `~/.claude/skills/` altına skill yazma (aynı adlı yerel skill'in üzerine yazar).
+- Plugin güncellemesi yalnız `plugins/cache/<plugin>/<yeni-sürüm>/`'ü değiştirir. Güncelleme sırasında `CLAUDE.md`, `agents/`, `skills/`, `hooks/`, `settings.json` ve memory'de değişiklik yapma.
+- Güncellemeden önce eski → yeni farkını (changelog/commit listesi) kısaca özetle; yeni sürüm hook, MCP sunucusu, agent veya izin getiriyorsa ayrıca söyle — bunlar kullanıcının kurallarıyla çakışabilir (GateGuard, ponytail SubagentStart, reviewer zinciri).
+- Kullanıcının bu plugin'e dair kuralı varsa (CLAUDE.md, memory, proje CLAUDE.md'si) güncellemeden sonra hâlâ geçerli olduğunu kontrol et; çakışma varsa kullanıcının kuralı geçerlidir, plugin'i değil kuralı uygula.
+- ECC agent/skill'leri plugin değildir (yerelde derinleştirilmiş kopyalar): onlar için `bootstrap/KURULUM.md` §9; asla upstream sürümünü üzerine kopyalama.
+- Bitince `powershell -ExecutionPolicy Bypass -File ~/.claude/bootstrap/plugins.ps1 -Record` ile sürümleri kaydet ve commit at (Commit Mesajı Standardı); Claude Code'un yeniden başlatılması gerektiğini söyle.
+
 # Plan Sonrası Dış Görüş Denetimi (bağlayıcı kural)
 Bir implementasyon planı onaya sunulmadan hemen önce — plan gerçek bir karar noktası içeriyorsa (kütüphane/servis/mimari/build-vs-buy seçimi) — `outside-view-reviewer` agent'ını, o planda kod da varsa ilgili dil-reviewer'larıyla birlikte çalıştır. Bu agent planı canlı araştırmayla (GitHub issue'ları, forumlar, StackOverflow, alternatif altyapılar) dışarıdan sınar ve her iddiasını kaynakla birlikte sunar.
 

@@ -186,6 +186,8 @@ kez daha yeniden başlat.
 | `bootstrap changed (...); re-running in background` | setup/plugins arka planda çalışıyor | birkaç dakika sonra Claude Code'u yeniden başlat |
 | `last background ... run failed` | arka plan kurulumu hata verdi | `hooks-state/sync/bootstrap.log` ve `bootstrap.err.log`'a bak; bir sonraki açılışta yeniden denenir |
 | `memory copy ... failed (robocopy N)` | memory kopyalanamadı | dosya kilidi / disk; tekrar dene |
+| `plugin version behind/different ...` | bu makinedeki plugin `plugins.lock.json`'dan eski/farklı | istersen güncelle (§10 "Güvenli güncelleme") |
+| `plugin newer here ...` | bu makinede daha yeni plugin var | bilinçliyse `plugins.ps1 -Record` + commit |
 
 İnternet yoksa sessiz kalır ve bir sonraki açılışta yeniden dener.
 
@@ -253,6 +255,30 @@ kez daha yeniden başlat.
   commit at. Diğer makinelerde bir sonraki açılışta `plugins.ps1` arka planda yalnız eksik olanı kurar.
 - **Kaldırma otomatik değildir:** listeden çıkarmak diğer makinede plugin'i kaldırmaz; orada
   `claude plugin uninstall <ad>@<marketplace>` elle çalıştırılmalı.
+- **Sürümler (yalnız uyarı):** `bootstrap/plugins.lock.json` her plugin'in kayıtlı sürümünü tutar.
+  `sync.ps1` her açılışta makinedeki sürümleri buna karşı kontrol eder ve **hiçbir zaman güncellemez**:
+  - makinedeki sürüm geride/farklı → `[config-sync] plugin version behind/different ...`; Claude
+    bunu sana bildirir, sen istemedikçe güncellemez.
+  - makinedeki sürüm ileride → `[config-sync] plugin newer here ...`; bilinçliyse `plugins.ps1
+    -Record` çalıştır ve commit at, diğer makine uyarı alsın.
+- **Güvenli güncelleme** (Claude'un uyduğu kural CLAUDE.md "Plugin Güncelleme"de):
+  ```powershell
+  claude plugin marketplace update <marketplace>
+  claude plugin update <plugin>@<marketplace>
+  powershell -ExecutionPolicy Bypass -File $HOME/.claude/bootstrap/plugins.ps1 -Record
+  git -C $HOME/.claude add bootstrap/plugins.lock.json; git -C $HOME/.claude commit -m "chore: plugin sürümlerini kaydet"
+  # Claude Code'u yeniden başlat
+  ```
+  Plugin güncellemesi yalnız `plugins/cache/<plugin>/<sürüm>/`'ü değiştirir; senin `CLAUDE.md`,
+  `agents/`, `skills/`, `hooks/`, `settings.json` ve memory'ne dokunmaz. Üzerine yazma riski
+  taşıyan tek yollar şunlardır ve kullanılmaz: plugin cache'ini elle düzenlemek, plugin dosyalarını
+  `~/.claude/skills|agents`'a kopyalamak, `npx skills add` / `hyperframes skills update` ile
+  `~/.claude/skills/`'e yazmak.
+- **Aynı plugin başka kaynaktan kuruluysa** (fork/başka marketplace): kimlik farklı olduğu için
+  bizimki de kurulur; eskisini `claude plugin uninstall` ile kaldır. Aynı adlı marketplace farklı
+  bir repoyu gösteriyorsa `plugins.ps1` hata verir ve her açılışta bildirir: `claude plugin
+  marketplace remove <ad>` sonra `plugins.ps1`. Yalnız bir projeye (project scope) kurulu plugin
+  "kurulu" sayılır; kullanıcı geneline istiyorsan `claude plugin install <id> --scope user`.
 - Plugin cache'inde (`plugins/cache/...`) düzenleme yapma: güncellemede silinir. Davranış
   tercihlerini CLAUDE.md'ye yaz; genel düzeltmeleri upstream'e PR olarak gönder.
 

@@ -70,6 +70,8 @@ After the one-time restore above, every Claude Code **session start** runs
   them it only records their hash. Both scripts are idempotent (only missing plugins are
   installed; ECC moves to a new pin only if the clone has no edits outside `ecc-local.patch`).
   A failed run is retried next start and reported in the session — log: `hooks-state/sync/bootstrap.log`
+- warns (never updates) when an installed plugin's version differs from `bootstrap/plugins.lock.json`;
+  Claude updates only when asked, following the CLAUDE.md "Plugin Güncelleme" rule
 - prints one line into the session only when something happened or needs attention
   (local changes blocking a pull, diverged branches, failed push)
 

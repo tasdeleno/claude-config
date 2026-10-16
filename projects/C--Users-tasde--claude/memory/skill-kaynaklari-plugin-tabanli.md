@@ -5,8 +5,14 @@ metadata:
   node_type: memory
   type: project
   originSessionId: cc40078c-b1d5-4098-aa0a-6e5539bacaf9
-  modified: 2026-10-16T09:25:22.000Z
+  modified: 2026-10-16T10:14:25.532Z
 ---
+
+**Makineler arası sürüm (2026-10-16, kullanıcı kararı):** `bootstrap/plugins.lock.json` kayıtlı
+sürümler; `sync.ps1` yalnız UYARIR, asla güncellemez. Güncelleme ancak kullanıcı isterse ve
+CLAUDE.md "Plugin Güncelleme" kuralıyla (yalnız `claude plugin update`, yerel agent/skill/CLAUDE.md/
+settings'e dokunmadan), sonra `plugins.ps1 -Record` + commit. Kullanıcının endişesi: güncellemenin
+kendi yöntem ve kurallarının üzerine yazması.
 
 2026-07-25'te `~/.claude/skills/` altındaki elle kopyalanmış skiller plugin'e taşındı. Güncelleme artık:
 `claude plugin marketplace update` → `claude plugin update <plugin>@<marketplace>` (restart gerekir).
