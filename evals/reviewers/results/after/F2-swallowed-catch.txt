@@ -1,0 +1,35 @@
+Repoda yalnızca `AlertService.php` var. `config/` dizini ve çağıran kod yok. Bu yüzden cache sürücüsünü ve `services.telegram.url` değerini doğrulayamadım.
+
+**Bulgular**
+
+[CRITICAL] app/Services/AlertService.php:15 | boş catch / yutulan hata | confidence 95 | `catch (\Throwable $e) {}` hiçbir şeyi loglamıyor, raporlamıyor ve yeniden fırlatmıyor. Uyarı gitmediğinde kimse haberdar olmaz. Bu metot "DB düştü" alarmı için yazılmış, yani kritik bir izleme yolu. | En azından `Log::channel('single')` veya `error_log()` ile `$e` ve mesaj bağlamını yaz. Log kanalı DB'ye değil dosyaya yazmalı.
+
+```php
+} catch (\Throwable $e) {
+    error_log('AlertService::notifyDbDown failed: '.$e->getMessage());
+}
+```
+
+Impact: Telegram yapılandırılmamışsa, token yanlışsa veya ağ yoksa alarm sessizce kaybolur. Operatör DB kesintisini fark etmez.
+Hidden errors: `ConnectionException` (Telegram'a erişilemiyor), `InvalidArgumentException`/`TypeError` (`config('services.telegram.url')` null ise), `Illuminate\Database\QueryException` (Cache sürücüsü `database` ise), `RedisException`, `ErrorException`, `Error`.
+
+[HIGH] app/Services/AlertService.php:13-14 | hatalı başarı / dedupe sırası | confidence 85 | `Cache::add` Http çağrısından önce 600 sn'lik kilidi alıyor. `Http::post` başarısız olursa kilit kalır ve sonraki 10 dakika boyunca yeniden deneme olmaz. Hata zaten yutulduğu için alarm 10 dakika boyunca sessizce susar. | Kilidi yalnızca başarılı gönderimden sonra koy, ya da hata durumunda `Cache::forget('alert:db-down')` çağır.
+
+```php
+$res = Http::timeout(5)->post(...);
+$res->throw();
+```
+
+Impact: Telegram'a bir kez ulaşılamazsa DB kesintisi alarmı 10 dakika boyunca hiç gönderilmez.
+Hidden errors: `RequestException`. `Http::post` 4xx/5xx durumunda exception fırlatmaz, `->throw()` yoksa catch'e bile düşmez ve başarısız yanıt yutulur.
+
+[HIGH] app/Services/AlertService.php:13 | bağımlılık hatası, DB ile aynı arıza | confidence 80 | Bu metot "DB down" anında çağrılacak. Cache sürücüsü `database` ise (Laravel varsayılanı `database` olabilir) `Cache::add` DB'ye gider ve tam o anda hata verir. Boş catch bunu gizler, alarm hiç gitmez. Cache sürücüsünü `config/cache.php` veya `.env` dosyasında göremedim, bu yüzden bu bulgunun geçerliliği sürücüye bağlı. | Bu alarm için `file`/`redis` store kullan: `Cache::store('file')->add(...)`.
+
+Impact: DB kesintisi, onu bildirecek mekanizmayı da devre dışı bırakır.
+Hidden errors: `QueryException`, `PDOException`.
+
+[MEDIUM] app/Services/AlertService.php:14 | timeout yok | confidence 85 | `Http::post` için `->timeout()` yok. Varsayılan 30 sn'dir ve istek senkron çalışır. DB kesintisi sırasında her istek 30 sn'ye kadar bekleyebilir. | `->timeout(5)->throw()` ekle.
+
+**Not:** Metodun hiç çağrıldığı yer yok (`grep` ile doğrulandı), yani şu an ölü kod. Çağıran kod eklendiğinde bulgular geçerli olur.
+
+Verdict: BLOCK — 1/2/1/0; tools: git diff --staged, grep

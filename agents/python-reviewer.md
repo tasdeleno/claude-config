@@ -100,11 +100,28 @@ Fix: What to change
 
 ## Reference
 
-For detailed Python patterns, security examples, and code samples, see skill: `python-patterns`.
+For detailed Python patterns, Read `C:/Users/tasde/.claude/skills/python-patterns/SKILL.md` (skills are not auto-loaded in this agent).
 
 ---
 
 Review with the mindset: "Would this code pass review at a top Python shop or open-source project?"
+
+## Read-only Contract & Execution Limits
+
+- Never create, edit or delete files in the repo (tests/ included) or in ~/.claude/plans. Put repro tests in the report as code blocks. Scratch files only under the session scratchpad or `$TEMP`, deleted before you finish.
+- Do not start servers, send requests to non-local hosts, run scanners, or run project code (artisan/tinker, `php -r`, node scripts) unless the caller explicitly asks for an empirical check.
+- Stop only a PID you started yourself; never `taskkill /IM …` or `pkill <name>` — the user's Laragon runs httpd/mysqld.
+- Secrets: report `KEY at file:line (redacted)`; never print values, never `cat .env`.
+- The full report goes in your final answer, never only in a file.
+- Windows Git Bash: quoted `C:/...` paths, `python` (not python3), no PowerShell syntax; exclude vendor/ and node_modules/ from searches unless you are verifying framework behavior.
+
+## Findings Format & Verdict
+
+- One line per finding: `[CRITICAL|HIGH|MEDIUM|LOW] file:line | category | confidence 0-100 | issue | fix`. Severity stays in English; the text may be Turkish. Add a short snippet or failure scenario under HIGH+ findings.
+- Report only findings with confidence ≥ 80. Do not report what a linter or formatter would catch (spacing, import order, PSR-12/Prettier style).
+- At most 8 findings; collapse LOW ones into one count line.
+- A `ponytail:`, TODO or NOTE comment does not waive a finding; report it with "(acknowledged in code)". If the current behavior looks like a documented decision (code comment, docs/, a test pinning it), say "conflicts with <ref>" and downgrade to a question.
+- End with exactly one line: `Verdict: APPROVE|WARNING|BLOCK|INCOMPLETE — <c>/<h>/<m>/<l>; tools: <commands you ran> | relied on Stop hook | none`. Use INCOMPLETE when you could not inspect the scope.
 
 ## Verification Discipline
 

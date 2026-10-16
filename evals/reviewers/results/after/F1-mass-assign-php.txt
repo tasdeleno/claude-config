@@ -1,0 +1,17 @@
+**Bulgular**
+
+[CRITICAL] app/Models/User.php:8 | Mass Assignment | confidence 98 | `$fillable = ['name','email']` yerine `$guarded = []` konmuş. Tüm kolonlar doldurulabilir hale geliyor (ör. `password`, `is_admin`, `role`, `email_verified_at`). Senaryo: kullanıcı `PUT /profile` isteğine `is_admin=1` ekleyerek yetki yükseltir. | Whitelist'e dön: `protected $fillable = ['name', 'email'];`
+
+[CRITICAL] app/Http/Controllers/ProfileController.php:12 | Mass Assignment / Missing validation | confidence 98 | `$user->update($request->all())` doğrulanmamış tüm girdiyi modele yazıyor. `$guarded = []` ile birleşince tam bir yetki yükseltme ve hesap ele geçirme açığı oluşuyor (`password`, `email` vb.). Doğrulama yok (email formatı ve unique kontrolü yok). | FormRequest kullan ve `$request->validated()` ile güncelle:
+```php
+$user->update($request->validated());
+```
+Kurallar: `name` => `['required','string','max:255']`, `email` => `['required','email',Rule::unique('users')->ignore($user->id)]`. Email değişirse doğrulamayı sıfırlamayı da düşün.
+
+[MEDIUM] app/Http/Controllers/ProfileController.php:1 | PHP Standards | confidence 90 | `declare(strict_types=1)` yok, sınıf `final` değil, `update()` için parametre ve dönüş tipi eksik (`: RedirectResponse`). Kullanılmayan `use App\Models\User;` var. | `declare(strict_types=1);` ekle, `final class` yap, `: RedirectResponse` ekle, kullanılmayan import'u sil.
+
+[MEDIUM] app/Models/User.php:1 | Laravel Patterns | confidence 80 | Model `Illuminate\Database\Eloquent\Model` extend ediyor, `Authenticatable` değil. `$request->user()` ile kullanılan model için auth contract'ı eksik olabilir. Diff'te yalnızca bu satır göründüğü için tam doğrulayamadım. | Auth için kullanılıyorsa `Illuminate\Foundation\Auth\User` extend et. Ayrıca `$hidden` ve `$casts` (`password` => `hashed`) tanımla.
+
+Ek not: Route tanımı bu diff'te yok. `update` route'unun `auth` middleware'i arkasında olduğunu doğrulayın. Aksi halde `$request->user()` null döner. Yetkilendirme/güvenlik tarafı için security-reviewer de çalıştırılmalı.
+
+Verdict: BLOCK — 2/0/2/0; tools: git diff --staged (statik analiz ve test çalıştırılmadı)

@@ -1,0 +1,24 @@
+## Güvenlik incelemesi: staged değişiklik
+
+**Kapsam:** `ProductController.php` (yeni) ve `routes/web.php`. Yeni bir herkese açık GET endpoint'i ekleniyor: `/products`.
+
+### Güvenlik bulgusu
+CRITICAL, HIGH veya MEDIUM güvenlik bulgusu yok. Doğruladıklarım:
+- **Injection:** Kullanıcı girdisi alınmıyor. Sorgu Eloquent ile yapılıyor (`latest()->paginate(20)`), ham SQL yok.
+- **Girdi doğrulama:** Request parametresi okunmuyor. `page` değerini Laravel'in paginator'ı tamsayıya çeviriyor.
+- **Sayfa boyutu:** 20'ye sabit. Kullanıcı `per_page` ile büyütemiyor, yani veri çekme kötüye kullanımı yok.
+- **XSS:** Henüz doğrulanamıyor. Aşağıdaki "Doğrulanamayan" bölümüne bakın.
+- **Auth:** Route'ta `auth` middleware'i yok. Ürün listesi muhtemelen herkese açık olması gereken bir veri. Bunu [UNVERIFIED] sayıyorum, çünkü repoda ürünün gizli veya kullanıcıya özel olup olmadığını gösteren bir şey yok. Ürünler özel veya yönetici verisiyse bu bir CRITICAL olur.
+- **Rate limiting:** `web` grubunda `throttle` yok. Endpoint her istekte DB'ye gidiyor. Public ise `->middleware('throttle:60,1')` eklenmesi düşünülebilir (LOW/MEDIUM, hardening).
+
+### Fonksiyonel bulgu (commit'i bozar)
+- **HIGH: Bağımlılıklar repoda yok.** `git ls-files` yalnızca bu iki dosyayı listeliyor. `app/Models/` ve `resources/views/` dizinleri yok. Yani `App\Models\Product` sınıfı ve `products.index` view'ı bulunmuyor. Bu haliyle `/products` isteği 500 döner (`Class "App\Models\Product" not found`). Model ve view'ı aynı commit'e ekleyin. Başka bir branch'te duruyorlarsa bunu commit mesajına yazın.
+- **LOW:** Controller dosyasında `declare(strict_types=1)` yok. Yalnızca projedeki stil gereği.
+
+### Doğrulanamayan
+- `products.index` view'ı yok. Blade'de ürün alanları `{{ }}` ile mi yazılıyor, yoksa `{!! !!}` kullanılıyor mu, bunu kontrol edemedim. View eklendiğinde ayrıca incelenmeli.
+- Model'de `$hidden` veya global scope yoksa, view'a hassas sütunlar (maliyet, tedarikçi fiyatı vb.) sızabilir. Model yok, bu yüzden kontrol edemedim.
+- `npm audit`, `composer audit` ve eslint çalıştırmadım. Repoda `composer.json` veya `package.json` yok.
+
+### Sonuç
+Güvenlik açısından bu diff tek başına temiz. Eksik `Product` modeli ve `products.index` view'ı yüzünden commit'e hazır değil. Onları ekledikten sonra (özellikle view ve model için) yeniden inceleme önerilir.

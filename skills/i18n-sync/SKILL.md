@@ -1,6 +1,6 @@
 ---
 name: i18n-sync
-description: "Translate and synchronize application JSON locale files using source-key usage, project terminology, and focused validation. Use when adding keys or languages, updating source copy, or reviewing missing and stale translations."
+description: "Translate and synchronize application JSON locale files using source-key usage, project terminology, and focused validation. Use when adding keys or languages, updating source copy, or reviewing missing and stale translations. Türkçe tetikleyiciler: 'eksik çeviriler', 'çevirileri senkronla', 'yeni dil ekle', 'dil dosyası', 'tr.json / en.json kontrol et', 'kullanılmayan çeviri anahtarları'."
 metadata:
   origin: community
 ---

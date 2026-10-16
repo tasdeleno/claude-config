@@ -1,0 +1,18 @@
+**Kapsam:** `src/auth/LoginScreen.tsx` (yeni dosya, +17). Platform Expo / React Native, bu yüzden web'e özgü kurallar uygulanmadı.
+**Araçlar:** Lint ve typecheck çalıştırılamadı. `package.json` içinde `lint`/`typecheck` script'i yok, `eslint.config.*` yok, `node_modules` yok. `react-hooks` lint kurallarının yapılandırılmadığını bir kez MEDIUM olarak not ediyorum (aşağıda).
+
+**Bulgular**
+
+[CRITICAL] src/auth/LoginScreen.tsx:8 | RN güvenlik | confidence 95 | Oturum token'ı `AsyncStorage.setItem('auth_token', token)` ile saklanıyor. AsyncStorage cihazda şifrelenmeden duruyor. Kök erişimi, yedekten çıkarma veya cihaz ele geçirme durumunda token düz metin okunur. | `expo-secure-store` (Keychain/Keystore) kullan: `SecureStore.setItemAsync('auth_token', token)`. Paket `package.json`'da zaten var (`~15.0.0`), yeni bağımlılık gerekmiyor. Kullanılmayan `AsyncStorage` import'unu da kaldır.
+
+[HIGH] src/auth/LoginScreen.tsx:11-13 | RN erişilebilirlik | confidence 88 | `Pressable` için `accessibilityRole`/`accessibilityLabel` yok, dokunma hedef boyutu da tanımlanmamış. Ekran okuyucu bunu "Giris" metniyle, rolsüz bir öğe olarak okur. Metin içinde de Türkçe karakter eksik ("Giriş" olmalı). Senaryo: VoiceOver/TalkBack kullanıcısı bunun bir buton olduğunu anlamaz. Ayrıca `Text` dışında padding veya `minHeight` olmadığı için hedef büyük ihtimalle 44×44 pt / 48×48 dp altında kalır. | `accessibilityRole="button"`, `accessibilityLabel="Giriş yap"` ekle, `minHeight: 48` ve gerekirse `hitSlop` ver. Metni "Giriş" olarak düzelt.
+
+[MEDIUM] src/auth/LoginScreen.tsx:6-9 | Asenkron hata ve durum | confidence 85 | `onPress` içinde `login` ve `setItem` try/catch olmadan çağrılıyor. Yanlış parola veya ağ hatasında promise reddedilir ve kullanıcı hiçbir geri bildirim görmez. Ayrıca yükleniyor/devre dışı durumu yok, bu yüzden çift dokunuşta çift `login` isteği gider. Bu konu `typescript-reviewer` ile ortak. React tarafı olarak hata ve loading state'inin UI'da gösterilmesi eksik. | `try/catch`, `loading` state'i ve `disabled={loading}` ekle. Hatayı `accessibilityLiveRegion`/`AccessibilityInfo.announceForAccessibility` ile duyur.
+
+[MEDIUM] src/auth/LoginScreen.tsx:4 | Derleme | confidence 80 | `'../api'` modülü repoda yok. `src/` altında yalnızca `auth` dizini var. Başka bir staged dosyada ya da henüz eklenmemiş bir dosyada olabilir, ama `git diff --staged` yalnızca bu dosyayı gösteriyor. | Commit'e `src/api` dosyasını ekle ya da import yolunu düzelt. `tsc` ile doğrula.
+
+[MEDIUM] package.json | Araçlar | confidence 80 | `eslint-plugin-react-hooks` ve lint/typecheck script'leri yapılandırılmamış. | Lint ve typecheck script'lerini ekle.
+
+**Not (düşük, tasarım sorusu):** Bileşen `email` ve `password`'ü prop olarak alıyor, `TextInput` yok. Büyük ihtimalle iskelet bir dosya. Gerçek form eklendiğinde şunlara dikkat et: `secureTextEntry`, `textContentType`/`autoComplete` ve girdi etiketleri.
+
+Verdict: BLOCK — 1/1/3/0; tools: git diff --staged, ls, cat package.json (lint/typecheck çalıştırılamadı: script/config/node_modules yok)

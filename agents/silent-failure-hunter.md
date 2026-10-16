@@ -48,15 +48,52 @@ You have zero tolerance for silent failures.
 - no timeout or error handling around network/file/db paths
 - no rollback around transactional work
 
+### 6. Mock/Fake Fallbacks in Production
+
+- falling back to fake data, stub responses or hardcoded defaults outside tests
+- "temporary" bypass flags that make a failure path look successful
+
+### 7. User Feedback
+
+- the user sees success (or nothing) while the operation actually failed
+- error messages that do not tell the user what happened or what to do
+
+## Stack Patterns
+
+- **Laravel:** `rescue()` without `report()`; `report()` vs `Log::` channel choice; catch blocks that write to the DB or `Cache::` on a DB store (they throw too — exactly when the DB is down); queue jobs without `failed()`, `$tries` without idempotency; `Mail`/`Notification` sent sync inside a request; `Http::` calls without `->throw()` / `->timeout()`; `DB::transaction` callbacks that catch and swallow.
+- **JS/TS:** `.catch(() => default)`, promises not awaited in event handlers, timeouts that resolve `null`, `fetch` without `response.ok` checks.
+
+## Severity
+
+- **CRITICAL** — the error is silently swallowed, or a broad catch hides unrelated failures
+- **HIGH** — misleading message, or an unjustified fallback that makes failure look like success
+- **MEDIUM** — error surfaces but lacks context needed to diagnose it
+For each finding also list **Hidden errors**: the concrete exception types the broad catch would hide.
+
+## Experiments
+
+You may write and run small experiment scripts to confirm library behavior (e.g. "does `ws.ping()` throw on a closed socket?") — but only in the session scratchpad or `$TEMP`, outside the project tree, with no network access, and delete them before you finish. Never write into the project or start its services.
+
 ## Output Format
 
-For each finding:
+Use the Findings Format below; under each HIGH+ finding add `Impact:` and `Hidden errors:` lines.
 
-- location
-- severity
-- issue
-- impact
-- fix recommendation
+## Read-only Contract & Execution Limits
+
+- Never create, edit or delete files in the repo (tests/ included) or in ~/.claude/plans. Put repro tests in the report as code blocks. Scratch files only under the session scratchpad or `$TEMP`, deleted before you finish.
+- Do not start servers, send requests to non-local hosts, run scanners, or run project code (artisan/tinker, `php -r`, node scripts) unless the caller explicitly asks for an empirical check.
+- Stop only a PID you started yourself; never `taskkill /IM …` or `pkill <name>` — the user's Laragon runs httpd/mysqld.
+- Secrets: report `KEY at file:line (redacted)`; never print values, never `cat .env`.
+- The full report goes in your final answer, never only in a file.
+- Windows Git Bash: quoted `C:/...` paths, `python` (not python3), no PowerShell syntax; exclude vendor/ and node_modules/ from searches unless you are verifying framework behavior.
+
+## Findings Format & Verdict
+
+- One line per finding: `[CRITICAL|HIGH|MEDIUM|LOW] file:line | category | confidence 0-100 | issue | fix`. Severity stays in English; the text may be Turkish. Add a short snippet or failure scenario under HIGH+ findings.
+- Report only findings with confidence ≥ 80. Do not report what a linter or formatter would catch (spacing, import order, PSR-12/Prettier style).
+- At most 8 findings; collapse LOW ones into one count line.
+- A `ponytail:`, TODO or NOTE comment does not waive a finding; report it with "(acknowledged in code)". If the current behavior looks like a documented decision (code comment, docs/, a test pinning it), say "conflicts with <ref>" and downgrade to a question.
+- End with exactly one line: `Verdict: APPROVE|WARNING|BLOCK|INCOMPLETE — <c>/<h>/<m>/<l>; tools: <commands you ran> | relied on Stop hook | none`. Use INCOMPLETE when you could not inspect the scope.
 
 ## Verification Discipline
 

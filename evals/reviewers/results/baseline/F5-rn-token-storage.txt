@@ -1,0 +1,39 @@
+# Review: `src/auth/LoginScreen.tsx` (yeni dosya, staged)
+
+**Karar: BLOCK.** 1 CRITICAL ve 2 HIGH bulgu var.
+
+Kapsam: Staged diff'teki tek dosya. Repoda `package.json` dışında başka dosya yok. Bu yüzden `../api` modülünü, lint'i ve typecheck'i çalıştıramadım. Repoda ESLint ve tsconfig de yok.
+
+## CRITICAL
+
+**[CRITICAL] Oturum token'ı AsyncStorage'da düz metin saklanıyor**
+- File: `src/auth/LoginScreen.tsx:8`
+- Issue: `await AsyncStorage.setItem('auth_token', token);`
+- Why: AsyncStorage şifrelenmez. Cihaz yedeği, root'lu cihaz veya JS tarafındaki bir açık token'ı okuyabilir. `package.json` içinde `expo-secure-store` zaten bağımlılık olarak var, yani doğru araç hazır ve kullanılmıyor.
+- Fix: `SecureStore.setItemAsync('auth_token', token)` kullan. Mümkünse `keychainAccessible` seçeneğini de ayarla.
+
+## HIGH
+
+**[HIGH] `onPress` içinde hata yönetimi yok (unhandled rejection)**
+- File: `src/auth/LoginScreen.tsx:6-9`
+- Issue: `login()` yanlış şifre veya ağ hatasıyla reddedilirse promise yakalanmaz. Kullanıcı hiçbir geri bildirim görmez. `setItem` hatası da sessizce kaybolur.
+- Why: Giriş akışında hata durumu görünmüyor. Buton da çift tıklamaya karşı korumasız, ikinci istek gidebilir.
+- Fix: `try/catch` ekle, hata durumunu state'te tut ve ekranda göster. İstek sürerken bir `submitting` state'i ile butonu devre dışı bırak. Async tarafın ayrıntısını typescript-reviewer da değerlendirmeli.
+
+**[HIGH] Ekran gerçek bir giriş formu değil**
+- File: `src/auth/LoginScreen.tsx:5`
+- Issue: `email` ve `password` prop olarak geliyor ve ekranda hiç `TextInput` yok. Kullanıcı bu değerleri bu ekranda giremez.
+- Why: Kullanıcı girdisini alan bir yer yoksa bu ekran login akışında işlevsiz. Parola prop olarak dolaştığı için üst bileşenlerde state'te tutulması ve prop drilling'e girmesi de muhtemel.
+- Fix: `useState` ile `email` ve `password` ekranın içinde tutulsun. `TextInput` alanlarında `textContentType`, `autoComplete`, `secureTextEntry` ve `accessibilityLabel` kullan.
+
+## MEDIUM
+
+**[MEDIUM] Erişilebilirlik: `Pressable` rolü ve etiketi eksik**
+- File: `src/auth/LoginScreen.tsx:11`
+- Issue: `accessibilityRole="button"` yok.
+- Why: Ekran okuyucular bunu buton olarak tanımayabilir.
+- Fix: `accessibilityRole="button"` ekle. Metin ASCII ("Giris") yazılmış, kullanıcıya görünen metinde "Giriş" olmalı.
+
+## Notlar
+- `../api` import'u staged değişikliklerde ve repoda yok (`git ls-files` yalnızca 2 dosya listeliyor). Commit'te bu modül eksikse derleme kırılır. Başka bir branch'te veya commit'te olup olmadığını doğrula.
+- Bu bir tahmin, doğrulamadım: `.tsx` eklendiği için typescript-reviewer'ın da çalıştırılması gerekir.

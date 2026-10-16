@@ -1,0 +1,25 @@
+**Kapsam:** Staged diff'teki 2 dosyayı inceledim: `ProfileController.php` (yeni) ve `User.php`. Repoda route, migration ve `role`/`is_admin`/`password` referansı yok. Bu yüzden hangi kolonların yazılabilir olduğunu ve endpoint'in route'a bağlı olup olmadığını doğrulayamadım.
+
+**Bulgular**
+
+[HIGH] app/Http/Controllers/ProfileController.php:12 + app/Models/User.php:8 | Mass assignment (OWASP A01/A04) | confidence 90 | `$user->update($request->all())` ile `$guarded = []` birleşince, giriş yapmış herhangi bir kullanıcı kendi kaydındaki her kolonu istek gövdesiyle değiştirebilir. Daha önce `$fillable = ['name','email']` bunu engelliyordu. | Model'de `$fillable = ['name','email']` değerini geri koy. Controller'da `$request->validate([...])` ile doğrulanmış alanları (`$request->validated()`) ya da `$request->only('name','email')` değerini ver.
+
+```php
+// Saldırı senaryosu: PATCH /profile  {"is_admin":1,"email_verified_at":"2020-01-01","password":"x"}
+// Bugün repoda is_admin/role kolonu görünmüyor. Ancak migration'a role, is_admin, balance ya da
+// email_verified_at eklendiği anda yetki yükseltme ve doğrulama atlatma doğrudan açılır.
+// Şu an bile id ve password gibi alanlar yazılabilir. password hash'lenmeden düz metin kaydolabilir
+// ve mevcut parolanın doğrulanması atlanır.
+
+// Düzeltme
+$user->update($request->validate([
+    'name'  => ['required', 'string', 'max:255'],
+    'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
+]));
+```
+
+[MEDIUM] app/Http/Controllers/ProfileController.php:10-12 | Eksik doğrulama / hesap ele geçirme | confidence 80 | `email` alanı doğrulama, unique kuralı ya da mevcut parola teyidi olmadan değiştirilebiliyor. Oturum çalınırsa saldırgan e-postayı değiştirip parola sıfırlama yoluyla hesabı kalıcı olarak ele geçirebilir. | `email` için validate + unique kuralı ekle. Bu alan değişirse `email_verified_at` değerini sıfırla ve `password.confirm` ya da mevcut parola teyidi iste.
+
+**Notlar:** Controller'ın route'u bu diff'te yok (`routes/` değişmemiş). Route eklenirken `auth` middleware'i konmalı. `$request->user()` null dönerse `update` çağrısı hata verir.
+
+Verdict: BLOCK — 0/1/1/0; tools: git diff --staged, Grep

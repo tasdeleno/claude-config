@@ -14,7 +14,14 @@
 !/skills/
 !/bootstrap/
 !/settings.json
+!/.gitattributes
+!/reports/
+!/evals/
 !/projects/
+# backups/: only the archived agents (restorable with one `git mv`); other backups stay local
+!/backups/
+/backups/*
+!/backups/agents-archive-*/
 
 # settings.local.json stays machine-local (project-specific permission grants) — never synced.
 
@@ -46,3 +53,6 @@
 *-cache.json
 settings.local.json
 settings.json.bak*
+__pycache__/
+.env*
+node_modules/

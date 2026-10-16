@@ -1,0 +1,10 @@
+Staged diff'te güvenlik bulgusu yok. Diff küçük: herkese açık `GET /products` rotası ve sayfalı bir `index` metodu.
+
+- **Girdi ve sorgu:** Kullanıcı girdisi yok. Sorgu `Product::query()->latest()->paginate(20)`. Ham SQL kullanılmıyor, `$request` hiç okunmuyor, mass assignment yok. Sayfa boyutu sabit olduğu için `per_page` ile sınırsız kayıt çekilemiyor.
+- **Kimlik doğrulama:** Rota `auth` olmadan açık. Bu bir ürün listesi için normal. Ürünlerin gizli veya tenant'a özel olduğuna dair bir işaret repoda yok.
+- **XSS:** `resources/views` altında `{!! !!}` kullanımı yok. `products.index` view'ı henüz yok, o yüzden çıktı kaçışı bu diff'te incelenemedi.
+- **Sır ve bağımlılık:** Sır yok. `composer audit` çalıştırmadım, çünkü diff bağımlılığa dokunmuyor.
+
+Güvenlik dışı bir not (güvenlik bulgusu değil, `php-reviewer` kapsamında): `App\Models\Product` ve `products.index` view'ı repoda yok. `app/Models` dizini bile yok. Bu haliyle `/products` isteği 500 verir. Model ve view başka bir commit'te gelecekse sorun değil. Gelmeyecekse commit'e eklenmeli. Yeni view'da veya modelde `$guarded = []` ya da `{!! !!}` kullanılırsa güvenlik review'ı tekrar gerekir.
+
+Verdict: APPROVE — 0/0/0/0; tools: git diff --staged, git status, grep, ls

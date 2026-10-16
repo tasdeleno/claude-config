@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 4142db0e-ef96-444b-bacf-cec4a3a4c73e
-  modified: 2026-09-21T13:51:20.478Z
+  modified: 2026-10-16T01:50:44.926Z
 ---
 
 2026-09-21'de iki kalici otomasyon eklendi:
@@ -24,10 +24,14 @@ koşulu commit-reviewer kuralıyla aynı mantık: tek seçenekli/net işlerde ç
 **`~/.claude/hooks/doc-update-reminder.js`** (global Stop hook, `settings.json` →
 `hooks.Stop`) — oturumda anlamlı kaynak kod değişikliği varsa (doküman/config/lock
 dosyaları hariç tutuluyor: `.md .json .yaml .toml .lock` + `package-lock.json` vb.)
-Claude durmadan önce `doc-updater` agent'ını (/update-docs, /update-codemaps) çalıştırmaya
-zorlanır. Dedupe: değişen dosya listesi + diff içeriğinin sha256'sı oturum bazlı state
-dosyasında (`~/.claude/hooks-state/doc-update-reminder/<session_id>.json`) tutulur —
-aynı diff için bir daha sormaz, yeni kaynak değişikliği gelince tekrar bloklar. Ayrıca
+Claude durmadan önce dokümanı güncellemeye zorlanır. **2026-10-16 revizyonu (kullanıcı kararı):**
+codemap varsa (`docs/CODEMAPS` / `CODEMAPS`) doc-updater + /update-codemaps; **codemap yoksa
+yalnız etkilenen mevcut .md'ler + proje memory'si** (memory yolu `transcript_path`'in yanındaki
+`memory/`), codemap üretilmez. doc-updater.md'ye aynı "Mode" bölümü eklendi (md-only varsayılan).
+Dedupe: imza artık yalnız değişen kaynak dosya KÜMESİ (diff içeriği değil) — eskisi her edit'te
+yeniden blokluyordu (83 tetikleme → 4 koşu ölçüldü). `git -c core.quotePath=false status
+--untracked-files=all`: Türkçe adlı .md ve yalnız-doküman yeni klasör kaynak sayılıyordu.
+State: `~/.claude/hooks-state/doc-update-reminder/<session_id>.json`. Ayrıca
 `data.stop_hook_active` kontrolü var (aynı stop-zincirinde döngüye girmesin).
 `DOC_UPDATE_STOP_CHECK=off` ile kapanır. `~/.claude/hooks/php-stop-check.js` ile aynı
 üslupta yazıldı (Turkce yorum, fail-open, stdin JSON okuma).

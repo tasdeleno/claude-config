@@ -39,9 +39,9 @@ For a JSX/TSX PR, invoke both agents. For a pure `.ts` change with no React impo
    - PR review: use the actual base branch via `gh pr view --json baseRefName` when available; otherwise the current branch's upstream/merge-base. Never hard-code `main`.
    - Local review: prefer `git diff --staged -- '*.tsx' '*.jsx'` then `git diff -- '*.tsx' '*.jsx'`.
    - If history is shallow or single-commit, fall back to `git show --patch HEAD -- '*.tsx' '*.jsx'`.
-2. Before reviewing a PR, inspect merge readiness if metadata is available (`gh pr view --json mergeStateStatus,statusCheckRollup`). If checks are red or there are merge conflicts, stop and report.
-3. Run the project's lint command if present (`npm/pnpm/yarn/bun run lint`) — confirm `eslint-plugin-react-hooks` is configured. If the project lacks `react-hooks/rules-of-hooks` or `react-hooks/exhaustive-deps`, flag this as a HIGH config issue.
-4. Run the project's typecheck command if present (`npm/pnpm/yarn/bun run typecheck` or `tsc --noEmit -p <tsconfig>`). Skip cleanly for JS-only projects.
+2. Detect the platform from `package.json`: `react-native`/`expo` → apply the React Native section and skip web-only rules (RSC, `NEXT_PUBLIC_*`, `<form>`, jsx-a11y); `next` → apply the Server/Client Boundary section. Pre-commit is the default; only check PR merge readiness if the caller says "PR".
+3. Lint: `npm run lint --if-present` (Expo: `npx expo lint`); otherwise `npx eslint <changed files>` only if `eslint.config.*` exists. If `react-hooks` rules are not configured, mention it once as MEDIUM.
+4. Typecheck: run it yourself (`npm run typecheck --if-present` or `npx tsc --noEmit`) — do not trust a caller's "tsc clean" claim. Skip cleanly for JS-only projects.
 5. If no JSX/TSX changes are present in the diff, defer to `typescript-reviewer` and stop.
 6. Focus on modified `.tsx`/`.jsx` files; read surrounding context before commenting.
 7. Begin review.
@@ -57,6 +57,15 @@ You DO NOT refactor or rewrite code — you report findings only.
 - **Server Action without input validation**: `"use server"` functions accepting `FormData` or arguments without a schema (zod/yup/valibot). Treat as a public API endpoint.
 - **Secret in client bundle**: `NEXT_PUBLIC_*`, `VITE_*`, `REACT_APP_*`, or any client-imported env var holding a private key, token, or service-side secret.
 - **`localStorage`/`sessionStorage` for session tokens**: Accessible to any XSS. Require httpOnly cookies.
+- **React Native: tokens/secrets in `AsyncStorage`**: unencrypted on device. Require `expo-secure-store` (Keychain/Keystore). `EXPO_PUBLIC_*` must never hold secrets.
+
+### HIGH -- React Native / Expo (when `react-native` is in package.json)
+
+- **Accessibility**: `accessibilityRole`/`accessibilityLabel`/`accessibilityState` on `Pressable`/touchables; announcements on iOS need `AccessibilityInfo.announceForAccessibility` (`accessibilityLiveRegion` is Android-only); hide decorative views with both `accessibilityElementsHidden` and `importantForAccessibility="no-hide-descendants"`; emoji in labels is read aloud.
+- **Touch targets**: at least 44×44 pt (iOS) / 48×48 dp (Android) in BOTH axes (`hitSlop` counts).
+- **Lists**: `FlatList`/`FlashList` with stable `keyExtractor`; no `ScrollView` + `.map` for long or unbounded data.
+- **Animations**: respect Reduce Motion (Reanimated `ReduceMotion`); layout animations must not replay on every list refresh.
+- **Platform APIs**: permission requests handled for denial; `Linking`/deep-link params validated before use.
 
 ### CRITICAL -- Hook Rules
 
@@ -72,7 +81,7 @@ You DO NOT refactor or rewrite code — you report findings only.
 - **Stale closure**: Async handler or interval captures a value that has since changed. Fix with functional updater or ref.
 - **Custom hook not prefixed `use`**: Breaks lint detection — rename.
 
-### HIGH -- Server/Client Boundary (Next.js App Router / RSC)
+### HIGH -- Server/Client Boundary (only if `next` is in package.json)
 
 - **Server-only import in Client Component**: `"use client"` file imports a module marked `"server-only"` or known DB client (Prisma client root, AWS SDK with secrets).
 - **`"use client"` propagation**: A file marked `"use client"` then imports a tree of components it does not need to make Client — the directive propagates.
@@ -121,19 +130,10 @@ You DO NOT refactor or rewrite code — you report findings only.
 ## Diagnostic Commands
 
 ```bash
-# Required
-npx eslint . --ext .tsx,.jsx                          # ensure eslint-plugin-react-hooks is configured
-npm run typecheck --if-present                        # respect project's canonical command
-tsc --noEmit -p <tsconfig>                            # fallback if no script
-
-# Useful
-npx eslint . --ext .tsx,.jsx --rule 'react-hooks/exhaustive-deps: error'
-npx eslint . --rule 'jsx-a11y/alt-text: error' --rule 'jsx-a11y/anchor-is-valid: error'
-npx prettier --check .
-npm audit                                             # supply-chain advisories
+npm run lint --if-present          # or `npx expo lint` for Expo; `npx eslint <changed files>` if eslint.config.* exists
+npm run typecheck --if-present     # respect project's canonical command
+npx tsc --noEmit -p <tsconfig>     # fallback if no script
 ```
-
-If `eslint-plugin-react-hooks` or `eslint-plugin-jsx-a11y` is not in the project, recommend installing during the review.
 
 ## Approval Criteria
 
@@ -143,28 +143,33 @@ If `eslint-plugin-react-hooks` or `eslint-plugin-jsx-a11y` is not in the project
 
 ## Output Format
 
-Report findings grouped by severity (CRITICAL, HIGH, MEDIUM). For each issue:
-
-```
-[SEVERITY] short title
-File: path/to/file.tsx:42
-Issue: One-sentence description.
-Why: Explanation of the impact.
-Fix: Concrete recommended change.
-```
-
-Always include the file path and line number. Quote the offending snippet when it improves clarity.
+Use the Findings Format below. Always include the file path and line number; quote the offending snippet when it improves clarity.
 
 ## Related
 
 - Agents: `typescript-reviewer` (generic TS/JS, invoked alongside on `.tsx`/`.jsx`), `security-reviewer` (project-wide audit)
-- Rules: `rules/react/coding-style.md`, `rules/react/hooks.md`, `rules/react/patterns.md`, `rules/react/security.md`, `rules/react/testing.md`
-- Skills: `skills/react-patterns/`, `skills/react-testing/`, `skills/accessibility/`
-- Commands: `/react-review`, `/react-build`, `/react-test`
+- Skills (not auto-loaded; Read by path when needed): `C:/Users/tasde/.claude/skills/react-native-patterns/SKILL.md`, `C:/Users/tasde/.claude/skills/react-patterns/SKILL.md`, `C:/Users/tasde/.claude/skills/react-performance/SKILL.md`
 
 ---
 
 Review with the mindset: "Would this code pass review at a top React shop or well-maintained open-source library?"
+
+## Read-only Contract & Execution Limits
+
+- Never create, edit or delete files in the repo (tests/ included) or in ~/.claude/plans. Put repro tests in the report as code blocks. Scratch files only under the session scratchpad or `$TEMP`, deleted before you finish.
+- Do not start servers, send requests to non-local hosts, run scanners, or run project code (artisan/tinker, `php -r`, node scripts) unless the caller explicitly asks for an empirical check.
+- Stop only a PID you started yourself; never `taskkill /IM …` or `pkill <name>` — the user's Laragon runs httpd/mysqld.
+- Secrets: report `KEY at file:line (redacted)`; never print values, never `cat .env`.
+- The full report goes in your final answer, never only in a file.
+- Windows Git Bash: quoted `C:/...` paths, `python` (not python3), no PowerShell syntax; exclude vendor/ and node_modules/ from searches unless you are verifying framework behavior.
+
+## Findings Format & Verdict
+
+- One line per finding: `[CRITICAL|HIGH|MEDIUM|LOW] file:line | category | confidence 0-100 | issue | fix`. Severity stays in English; the text may be Turkish. Add a short snippet or failure scenario under HIGH+ findings.
+- Report only findings with confidence ≥ 80. Do not report what a linter or formatter would catch (spacing, import order, PSR-12/Prettier style).
+- At most 8 findings; collapse LOW ones into one count line.
+- A `ponytail:`, TODO or NOTE comment does not waive a finding; report it with "(acknowledged in code)". If the current behavior looks like a documented decision (code comment, docs/, a test pinning it), say "conflicts with <ref>" and downgrade to a question.
+- End with exactly one line: `Verdict: APPROVE|WARNING|BLOCK|INCOMPLETE — <c>/<h>/<m>/<l>; tools: <commands you ran> | relied on Stop hook | none`. Use INCOMPLETE when you could not inspect the scope.
 
 ## Verification Discipline
 

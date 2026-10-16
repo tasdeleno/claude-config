@@ -22,14 +22,24 @@ Her proje başlangıcında proje amacını ve yapısı anladıktan sonra gereken
 Örneğin: Kullanıcı frontend güzel gözüksün dedi, soru olarak "frontend için xxx skilini mi kullanayım veya x işlem için xx skillini mi kullanayım" gibi. 
 
 # Commit Öncesi Otomatik Reviewer (bağlayıcı kural)
-`git commit` atmadan HEMEN ÖNCE, commit'te değişen dosya türlerine göre ilgili reviewer agent'(lar)ını çalıştır; ciddi bulguları uygula, kalanını raporla:
+`git commit` atmadan HEMEN ÖNCE, commit'te değişen dosya türlerine göre ilgili reviewer agent'(lar)ını çalıştır; ciddi bulguları doğrulayıp uygula, kalanını raporla:
 
-- `.py` → python-reviewer · `.ts/.js` → typescript-reviewer · `.tsx/.jsx` → react-reviewer
-- `.php` → php-reviewer · `.cs` → csharp-reviewer · SQL/migration → database-reviewer
-- Auth, kullanıcı girdisi, API endpoint veya gizli veri değiştiyse ek olarak → security-reviewer
+- `.py` → python-reviewer · `.ts/.js` → typescript-reviewer · `.tsx/.jsx` → react-reviewer (+ typescript-reviewer yalnız bileşen dışı TS mantığı da değiştiyse; tek agent'a iki rol verme)
+- `.php`/`.blade.php` → php-reviewer · `.cs` → csharp-reviewer · SQL/migration → database-reviewer
+- Auth, kullanıcı girdisi, API endpoint, gizli veri, `.htaccess`/sunucu conf veya CI yml değiştiyse ek olarak → security-reviewer
 - Hata yönetimi/kritik akış değiştiyse ek olarak → silent-failure-hunter
+- Yalnız CSS/görsel değişiklik → reviewer yok.
 
-Atlama koşulu: yalnızca typo, yorum, doküman veya yapılandırma değişen önemsiz commit'lerde reviewer çalıştırma. Aynı yanıt içinde birden fazla commit varsa reviewer'ları tek seferde, birleşik diff üzerinde çalıştır.
+Atlama koşulu: yalnızca typo, yorum, doküman veya yapılandırma değişen önemsiz commit'lerde reviewer çalıştırma. **Küçük diff istisnası:** ≤10 değişen satır, tek dosya ve auth/girdi/hata akışına dokunmuyorsa yalnız dil reviewer'ı. Aynı yanıt içinde birden fazla commit varsa reviewer'ları tek seferde, birleşik diff üzerinde çalıştır.
+
+Zincir kuralları:
+- **Prompt'a yaz:** diff hash'i (`git diff --staged | git hash-object --stdin`), birlikte çalışan diğer reviewer'lar (lane devri için), kullanıcı kararları, hariç yollar. Commit'ten önce hash değiştiyse değişen dosyalar için ilgili reviewer'ı tekrar çalıştır. Arka plandaki reviewer'lar bitmeden commit atma.
+- **Birleştir:** aynı dosya:satır (±2) + aynı kategori tek bulgudur; lane sahibine (güvenlik → security, yutulan hata → silent-failure, gerisi dil reviewer'ı) yaz.
+- **Doğrula, sonra uygula:** her HIGH/CRITICAL bulguyu kodda kendin doğrula; yanlışsa gerekçeyle reddet ve commit gövdesindeki "Reviewer bulguları"na yaz.
+- **Verdict yoksa review yok:** rapor `Verdict:` satırı içermiyorsa (limit, hata, boş dönüş) o review YAPILMAMIŞ sayılır; commit gövdesine `<agent>: INCOMPLETE (<sebep>)` yaz.
+- **Re-review:** HIGH/CRITICAL düzeltmesi uyguladıysan aynı reviewer'ı yalnız düzeltme diff'i için bir kez daha çalıştır.
+- Proje memory'si bu kuralı açıkça daraltıyorsa proje memory'si geçerli; atlanan reviewer'ı sebebiyle commit gövdesine yaz.
+- Faz/dalga bitip main'e merge veya PR öncesi → **pr-test-analyzer** (fazın birikmiş diff'i üzerinde, tek sefer).
 
 # Commit Mesajı Standardı (bağlayıcı kural)
 Commit mesajı **detaylı** olacak: `git log` tek başına okunduğunda "ne değişti, neden, nasıl doğrulandı" sorularının üçü de cevaplanmalı. Diff'i tekrar anlatma; diff'in söylemediğini yaz.

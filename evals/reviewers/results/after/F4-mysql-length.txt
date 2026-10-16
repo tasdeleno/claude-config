@@ -1,0 +1,24 @@
+**Bulgular**
+
+[HIGH] app/Http/Controllers/LeadController.php:10 | veri bütünlüğü / strict mode | confidence 95 | `name` ve `message` için yalnızca `required|string` var, `max:` kuralı yok. Migration'da bu alanlar `string('name', 50)` ve `string('message', 100)`. Fix: validation'ı `'name' => 'required|string|max:50', 'message' => 'required|string|max:100'` yap. Ya da mesaj uzun olabilecekse migration'da `message` sütununu `text` yap.
+
+```php
+// Hata senaryosu: POST /leads  {"name":"x","message":"<150 karakter>"}
+// MySQL 8 strict mode: SQLSTATE[22001] Data too long for column 'message' -> 500
+// SQLite (testler) varchar uzunluğunu zorlamaz, bu yüzden test geçer, prod'da patlar.
+```
+
+Bu girdi herkese açık bir form olabilir. Bu durumda her uzun mesaj 500 döndürür ve mesaj kaybolur.
+
+Öneri olarak, migration'daki 100 karakterlik `message` sınırı bir lead mesajı için dar. Bu sınır bilinçli bir karar değilse `text` kullan. Bu migration henüz deploy edilmediği için yerinde düzenlenebilir.
+
+Test için şu repro'yu ekle (Feature test, `max` kuralı eklendikten sonra 422 beklenir):
+
+```php
+$this->postJson('/leads', ['name' => 'a', 'message' => str_repeat('x', 101)])
+     ->assertStatus(422);
+```
+
+Başka bulgu yok. Route tanımı bu diff'te olmadığı için throttle ve spam koruması konusunda yorum yapmadım.
+
+Verdict: WARNING — 0/1/0/0; tools: git diff --staged

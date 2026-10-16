@@ -1,0 +1,43 @@
+# Commit öncesi review: `AlertService::notifyDbDown`
+
+Kapsam: staged diff'teki tek dosya, `app/Services/AlertService.php`. Repoda `notifyDbDown`, `telegram` ve `AlertService` için grep yaptım. Eşleşmeler yalnızca bu dosyada çıktı. Yani çağıran kod ve `config/services.php` içinde `telegram` anahtarı yok. Test veya statik analiz çalıştırmadım.
+
+## Bulgular
+
+**1. Boş `catch (\Throwable $e) {}`: hata tamamen yutuluyor**
+- Konum: `AlertService.php`, `notifyDbDown` içindeki catch bloğu.
+- Önem: **HIGH**
+- Sorun: Hiçbir log, rethrow veya metrik yok. Bu metodun tek işi uyarı göndermek. Telegram'a ulaşılamasa, URL boş olsa veya timeout olsa bile kimse fark etmez.
+- Etki: DB çöktüğünde uyarı gitmez ve nedenini gösteren hiçbir iz kalmaz. Yanlış güven de yaratır, çünkü alarm sistemi çalışıyor sanılır.
+- Öneri: Yutmak gerekiyorsa en azından `Log::error('db-down alert gönderilemedi', ['exception' => $e])` yaz. DB çökükken `database` log kanalı kullanılmamalı. `stack` içindeki `single` veya `stderr` kanalına yaz.
+
+**2. `Http::post` yanıt durumunu kontrol etmiyor**
+- Konum: `Http::post(...)` satırı.
+- Önem: **HIGH**
+- Sorun: Laravel `Http` 4xx/5xx yanıtlarda exception fırlatmaz, `Response` döndürür. Yanlış token için 401, rate limit için 429 gibi durumlarda catch'e hiç girilmez. Dönen değer de kullanılmıyor, yani bu hata yolu catch olsa bile görünmez.
+- Etki: Telegram reddetse de metot sessizce başarılı görünür. Üstelik bulgu 3 yüzünden bu başarısızlık 10 dakika boyunca tekrar denenmez.
+- Öneri: `Http::timeout(5)->post(...)->throw()` kullan. Hata catch'te loglansın.
+
+**3. `Cache::add` kilidi gönderimden önce alınıyor ve başarısızlıkta geri alınmıyor**
+- Konum: `if (Cache::add('alert:db-down', 1, 600))`.
+- Önem: **HIGH**
+- Sorun: Anahtar 600 sn için yazılıyor, sonra gönderim deneniyor. Gönderim başarısız olursa anahtar silinmiyor.
+- Etki: İlk gönderim hata verirse sonraki 10 dakika boyunca hiç uyarı denenmez. Bu, bulgu 1 ve 2 ile birleşince tam bir sessiz kayıp olur.
+- Öneri: Gönderim başarısız olursa catch içinde `Cache::forget('alert:db-down')` çağır. Daha iyisi, `->throw()` başarılı olduktan sonra kilidi koymak. Bu durumda ise eşzamanlı çağrılarda çift gönderim riski olur.
+
+**4. Cache sürücüsü DB olabilir**
+- Konum: `Cache::add` çağrısı.
+- Önem: **MEDIUM** `[UNVERIFIED]`
+- Sorun: Metodun amacı DB çökmesini bildirmek. `CACHE_STORE=database` ise (Laravel 12 varsayılanı budur) `Cache::add` DB hatası fırlatır. Bu hata da boş catch'e düşer ve uyarı hiç gitmez.
+- Doğrulama: Repoda `.env`, `.env.example` ve `config/cache.php` yoktu, bu yüzden sürücüyü göremedim. Bunu `config/cache.php` ve `.env` içindeki `CACHE_STORE` değerine bakarak kesinleştir.
+- Öneri: Uyarı yolunda DB'ye bağımlı olmayan bir store kullan: `Cache::store('file')` veya `redis`.
+
+**5. Timeout yok ve yapılandırma doğrulanmıyor**
+- Konum: `Http::post(config('services.telegram.url'), ...)`.
+- Önem: **MEDIUM**
+- Sorun (timeout): Laravel `Http` varsayılan timeout'u 30 sn. Telegram yavaşsa istek bu süre boyunca asılı kalır. Bu metot büyük olasılıkla zaten arızalı bir istek akışında çağrılacak.
+- Sorun (yapılandırma): `config/services.php` içinde `telegram` anahtarı yok (grep sonucu). `config(...)` bu durumda `null` döner ve `Http::post(null, ...)` exception fırlatır. Bu da boş catch tarafından yutulur. Metot bugün hiçbir koşulda uyarı gönderemez.
+- Öneri: `Http::timeout(5)` ekle ve `services.telegram.url` değerini `config/services.php` ile `.env.example` içine tanımla. Değer boşsa en azından log yaz.
+
+## Genel değerlendirme
+Commit atmadan önce 1, 2 ve 3 düzeltilmeli. Bu üçü birleşince alarm mekanizması hata verdiğinde bunu hiç göstermiyor. Ayrıca `telegram` config'i eklenmediği için kod şu haliyle hiç çalışmaz. Metodun çağrıldığı yer de henüz yok, yani ölü kod. Çağıran kod ayrı bir commit'te gelecekse commit mesajında bunu belirt.

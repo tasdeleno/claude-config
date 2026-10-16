@@ -1,0 +1,30 @@
+## İnceleme sonucu: **BLOCK** (1 HIGH bulgu)
+
+Kapsam: staged diff, yalnızca `src/sync.ts` (+7 satır, yeni `syncAll` fonksiyonu). Typecheck, eslint ve test çalıştırmadım. Bulguyu diff'i okuyarak doğruladım.
+
+### HIGH: `forEach(async ...)` bekleme yapmaz (`src/sync.ts`, `syncAll`)
+
+```ts
+ids.forEach(async (id) => {
+  await save(id);
+});
+return 'done';
+```
+
+- `forEach` callback'in döndürdüğü promise'i dikkate almaz. `syncAll` hiçbir `save` çağrısını beklemeden hemen `'done'` döner.
+- Çağıran taraf senkronizasyon bitti sanır. Oysa istekler hâlâ havada olabilir.
+- `save` içindeki bir hata (ağ hatası, `fetch` reject'i) kimsenin yakalamadığı bir unhandled promise rejection olur. Node'da süreci düşürebilir, React Native'de ise sessizce kaybolur.
+- `fetch` yalnızca ağ hatasında reject eder. Sunucudan 4xx veya 5xx dönerse bile fonksiyon `'done'` döner.
+
+Önerilen düzeltme (ben yazmadım, yalnızca raporluyorum):
+- Bağımsız istekler için `await Promise.all(ids.map(save))` kullanılabilir. Çok sayıda id varsa eşzamanlılığı sınırlamak gerekebilir.
+- Sıra önemliyse `for...of` içinde `await save(id)` kullanılabilir.
+
+### MEDIUM
+
+- **Dönüş tipi anlamsız:** `Promise<string>` ve `'done'` sabiti bilgi taşımıyor. `Promise<void>` olması daha doğru. Başarısızlık bilgisi gerekiyorsa `Promise.allSettled` ile sonuç döndürülebilir.
+- **`save` içinde `res.ok` kontrolü yok:** Bu eski kod, diff'te değişmiyor. Ancak `syncAll` buna dayandığı için hatalı yanıtlar sessizce geçer.
+
+### Sonuç
+
+HIGH bulgu düzelmeden commit atılmamalı. Düzeltmeden sonra reviewer'ı yeniden çalıştırmak iyi olur.

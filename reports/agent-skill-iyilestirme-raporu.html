@@ -1,0 +1,299 @@
+<title>Filo İyileştirme Raporu</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tek kolon okuma akışı; kart tabloları filtrelenebilir, geniş tablolar kendi kabında kayar */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#17202e; --muted:#5a6577; --line:#dde2ea;
+  --accent:#1f5fbf; --accent-soft:#e3ecfa;
+  --ok:#1d7a4a; --ok-bg:#e1f3e9; --warn:#9a5b00; --warn-bg:#fbefd9; --bad:#b4282e; --bad-bg:#fbe3e4; --info:#4b5563; --info-bg:#eceff3;
+  --f-display:"Archivo",system-ui,sans-serif; --f-body:"Public Sans",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141c; --surface:#161d28; --fg:#e4e9f1; --muted:#9aa6b8; --line:#283244;
+  --accent:#7fa9f0; --accent-soft:#1c2a42;
+  --ok:#6fd19c; --ok-bg:#15301f; --warn:#f0b65a; --warn-bg:#33270f; --bad:#f08a8e; --bad-bg:#3a1a1c; --info:#b5bfcc; --info-bg:#222b38; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141c; --surface:#161d28; --fg:#e4e9f1; --muted:#9aa6b8; --line:#283244;
+  --accent:#7fa9f0; --accent-soft:#1c2a42;
+  --ok:#6fd19c; --ok-bg:#15301f; --warn:#f0b65a; --warn-bg:#33270f; --bad:#f08a8e; --bad-bg:#3a1a1c; --info:#b5bfcc; --info-bg:#222b38; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 var(--f-body)}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:48px}
+h1,h2,h3{font-family:var(--f-display);font-stretch:85%;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(2rem,5vw,3rem);font-weight:800}
+h2{font-size:1.6rem;font-weight:700}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0;max-width:68ch}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+section{display:grid;gap:16px;min-width:0}
+.eyebrow{font:500 .8rem/1.4 var(--f-mono);letter-spacing:.02em;color:var(--muted)}
+.lede{color:var(--muted);font-size:1.05rem}
+header{display:grid;gap:14px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font:400 .82rem var(--f-mono);color:var(--muted)}
+.note{background:var(--accent-soft);padding:12px 16px;border-radius:6px;max-width:none}
+.verdict{font:500 .9rem/1.5 var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{border-top:2px solid var(--fg);padding-top:8px}
+.stat b{display:block;font:700 1.8rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.85rem}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+th{font:500 .72rem var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);text-align:right;white-space:nowrap}
+.top10 td:first-child{font:700 1rem var(--f-display);color:var(--muted);width:2.5em}
+.chip{display:inline-block;font:500 .72rem/1.3 var(--f-mono);padding:4px 8px;border-radius:3px;white-space:nowrap;letter-spacing:.02em}
+.c-keep{background:var(--ok-bg);color:var(--ok)}
+.c-fix{background:var(--warn-bg);color:var(--warn)}
+.c-arch{background:var(--info-bg);color:var(--info)}
+.c-rule{background:var(--accent-soft);color:var(--accent)}
+.c-hi{background:var(--bad-bg);color:var(--bad)}
+.c-mid{background:var(--warn-bg);color:var(--warn)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters input{flex:1 1 220px;min-width:0;font:inherit;font-size:.9rem;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--fg)}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{font:500 .78rem var(--f-mono);padding:7px 10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:4px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.count{font:400 .8rem var(--f-mono);color:var(--muted)}
+.cards{display:grid;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:8px;min-width:0}
+.card-h{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
+.card-h h3{font-family:var(--f-mono);font-stretch:100%;font-size:1rem;font-weight:500}
+.card-h .runs{font:400 .8rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.card dl{display:grid;grid-template-columns:7.5em 1fr;gap:4px 12px;margin:0;font-size:.9rem}
+.card dt{color:var(--muted);font-size:.8rem;padding-top:2px}
+.card dd{margin:0;min-width:0}
+@media (max-width:560px){.card dl{grid-template-columns:1fr}.card dt{padding-top:6px}}
+ol.list,ul.list{margin:0;padding-left:1.3em;display:grid;gap:8px;max-width:72ch}
+.decision{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px}
+.decision p{max-width:none}
+.decision b{font-family:var(--f-display);font-stretch:90%}
+pre{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto;font:400 .82rem/1.55 var(--f-mono)}
+.prds{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.prd{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:14px 16px;display:grid;gap:6px;align-content:start}
+.prd code{color:var(--muted)}
+.src{columns:2 320px;column-gap:32px;font-size:.88rem}
+.src p{break-inside:avoid;margin-bottom:10px}
+footer{color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:no-preference){.seg button{transition:background .15s}}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">~/.claude · 2026-10-16 · autoresearch improve + scenario</span>
+  <h1>Agent + skill filosu: geliştirme ve iyileştirme raporu</h1>
+  <p class="lede">19 agent ve en çok kullanılan 10 skill; 404 transcript ve 329 subagent koşusundan ölçülmüş kullanım, 135 edge-case senaryosu, GitHub'daki muadillerle karşılaştırma ve upstream güncellemelerine karşı yerel iyileştirmeleri koruma stratejisi.</p>
+  <div class="meta"><span>improve: 24 iterasyon · 26 insight · saturasyon</span><span>scenario: 135 senaryo · 12/12 boyut</span><span>4 paralel ajan + outside-view</span></div>
+</header>
+
+<section>
+  <span class="eyebrow">Hüküm</span>
+  <div class="verdict">Verdict: WARNING — muhakeme iyi, tanımlar ve zincir kuralı zayıf · 0 critical · 25 high · öneri 22 (9 must)</div>
+  <p>Reviewer'ların bulguları genelde isabetli: dosya:satır, somut arıza senaryosu, dürüst <code>[UNVERIFIED]</code> etiketleri. Sorunların neredeyse tamamı agent tanımlarında ve CLAUDE.md'deki zincir kuralında: davranış sınırı yok, stack uyumsuz, çıktı formatı tutulmuyor, aynı bulgu üç raporda çıkıyor. Kullanılmayan 8 agent'ın ortak sebebi tek: CLAUDE.md'de tetikleyici yok. "Use PROACTIVELY" ifadesi 404 transcript'te sıfır çağrı üretti.</p>
+  <div class="stats">
+    <div class="stat"><b>%39</b><span>aynı dosya:satırı raporlayan reviewer çifti</span></div>
+    <div class="stat"><b>41/69</b><span>"araç çalıştırmadım" diyen php-reviewer raporu</span></div>
+    <div class="stat"><b>7/47</b><span>HIGH bulgu sonrası re-review</span></div>
+    <div class="stat"><b>0/255</b><span>reviewer koşusunda okunan SKILL.md</span></div>
+    <div class="stat"><b>4/83</b><span>doc hook tetiklemesinden doğan koşu</span></div>
+  </div>
+  <p class="note">Çağrı sayıları tool_use kimliğiyle tekilleştirildi. Planda verilen 149/138/119… değerleri iki kat sayımdı. Oranlar regex ile sayıldı; yön net, kesin değer değil.</p>
+</section>
+
+<section>
+  <h2>İlk 10 öneri</h2>
+  <div class="tbl"><table class="top10">
+    <thead><tr><th>#</th><th>Öneri</th><th>Etki</th><th>Efor</th><th>Kanıt</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Reviewer, explorer ve outside-view'e salt-okuma + çalıştırma sınırı</td><td><span class="chip c-hi">yüksek</span></td><td class="mono">S</td><td>php-reviewer repoya test yazdı; security-reviewer <code>taskkill /IM httpd.exe</code>; outside-view müşteri prod'una curl; code-explorer <code>artisan tinker</code></td></tr>
+      <tr><td>2</td><td><code>PONYTAIL_SUBAGENT_MATCHER</code> ile ponytail'i subagent'lardan çıkar</td><td><span class="chip c-mid">orta</span></td><td class="mono">XS</td><td>329/329 koşuya ~1.3k token; bir reviewer injection sandı</td></tr>
+      <tr><td>3</td><td>security-reviewer: Laravel dalı + Anthropic hard-exclusions</td><td><span class="chip c-hi">yüksek</span></td><td class="mono">M</td><td>60 koşuda 0 <code>composer audit</code>; rate-limit HIGH sayılıyor</td></tr>
+      <tr><td>4</td><td>database-reviewer: motor algılama (MySQL/SQLite)</td><td><span class="chip c-mid">orta</span></td><td class="mono">S</td><td>Ana oturum 9/14 prompt'ta "hedef MySQL" düzeltmesi yazdı</td></tr>
+      <tr><td>5</td><td>Zincir kuralları: lane tablosu, <code>Verdict:</code>, doğrula-sonra-uygula, INCOMPLETE, re-review</td><td><span class="chip c-hi">yüksek</span></td><td class="mono">M</td><td>%39 tekrar; 6 limit mesajı rapor sanıldı</td></tr>
+      <tr><td>6</td><td>Araç politikası: Stop hook sonucunu kabul et; ESLint <code>--ext</code> düzelt</td><td><span class="chip c-mid">orta</span></td><td class="mono">S</td><td><code>--ext</code> ESLint 9'da geçersiz; 12× phpstan tekrarı</td></tr>
+      <tr><td>7</td><td>Kırık skill/komut atıflarını <code>Read &lt;tam yol&gt;</code>'a çevir</td><td><span class="chip c-mid">orta</span></td><td class="mono">S</td><td>Reviewer'larda Skill aracı yok</td></tr>
+      <tr><td>8</td><td>Skill description'larını Türkçe karakterle yaz; eski synced proje-checklist'i kapat</td><td><span class="chip c-mid">orta</span></td><td class="mono">S</td><td>"açıkları denetle" → yanlış skill</td></tr>
+      <tr><td>9</td><td>Doc Stop hook düzeltmesi + doc-updater onarımı</td><td><span class="chip c-mid">orta</span></td><td class="mono">S</td><td>Türkçe adlı .md "kaynak" sayılıyor (yeniden üretildi)</td></tr>
+      <tr><td>10</td><td>Reviewer eval seti, mimari değişikliklerden önce</td><td><span class="chip c-hi">yüksek</span></td><td class="mono">M</td><td>Bugün etkiyi ölçen hiçbir şey yok</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="kartlar">
+  <h2>Agent ve skill kartları</h2>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Ara: ad, sorun, öneri…" aria-label="Kartlarda ara">
+    <div class="seg" role="group" aria-label="Tür">
+      <button type="button" data-f="kind" data-v="all" aria-pressed="true">Hepsi</button>
+      <button type="button" data-f="kind" data-v="reviewer" aria-pressed="false">Reviewer</button>
+      <button type="button" data-f="kind" data-v="process" aria-pressed="false">Süreç</button>
+      <button type="button" data-f="kind" data-v="skill" aria-pressed="false">Skill</button>
+    </div>
+    <div class="seg" role="group" aria-label="Karar">
+      <button type="button" data-f="dec" data-v="all" aria-pressed="true">Her karar</button>
+      <button type="button" data-f="dec" data-v="fix" aria-pressed="false">Düzelt</button>
+      <button type="button" data-f="dec" data-v="arch" aria-pressed="false">Arşivle</button>
+      <button type="button" data-f="dec" data-v="rule" aria-pressed="false">Kural ekle</button>
+      <button type="button" data-f="dec" data-v="keep" aria-pressed="false">Tut</button>
+    </div>
+  </div>
+  <span class="count" id="count" aria-live="polite"></span>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section>
+  <h2>Filo geneli bulgular</h2>
+  <ol class="list">
+    <li><b>Zincir yalnız prose ile işliyor.</b> Aynı oturumdaki reviewer çiftlerinin %39'u aynı dosya:satırı raporluyor (php↔security 17, php↔ts 15). Önemsiz olmayan commit'lerin ~%26'sı reviewer'sız gitmiş (kaba ölçüm).</li>
+    <li><b>Bulgular doğrulanmadan uygulanıyor.</b> <code>CLAUDE.md:25</code> "ciddi bulguları uygula" diyor; Anthropic'in code-review'u bulgu başına doğrulayıcı koşturuyor. Bir öneri daha önce düzeltilmiş bir hatayı geri getirecekti.</li>
+    <li><b>ponytail personası her subagent'a giriyor</b> (329/329). Plugin'in kendi seçeneği var: <code>ponytail-subagent.js:8-11</code>.</li>
+    <li><b>Windows kabuk hataları tekrarlıyor:</b> <code>python3</code> yok, bash'te <code>%TEMP%</code>, bash'te PowerShell cmdlet'i, <code>Masaüstü</code> yolunda mojibake. 19 dosya yerine tek bir SubagentStart hook'u yeter.</li>
+    <li><b>Frontmatter'da <code>effort</code>, <code>maxTurns</code>, <code>color</code> hiç yok.</b> <code>settings.json</code>'daki <code>claude-sonnet-5: xhigh</code> kaydı yüzünden effort'u açıkça sabitlemek gerekebilir (miras davranışı doğrulanmadı).</li>
+    <li><b>Model seçimi doğru.</b> Haiku'ya geçmek önerilmiyor: superpowers ölçümünde haiku 2-3× tur harcadı.</li>
+    <li><b>Doc Stop hook çoğunlukla gürültü:</b> <code>doc-update-reminder.js:35</code> quotePath yüzünden Türkçe adlı <code>.md</code>'yi kaynak sayıyor; <code>:49</code> imzası her edit'te değişip tekrar blokluyor.</li>
+    <li><b>autoresearch scout-block hook'u</b> reviewer'ların <code>node_modules/.bin</code>, <code>*.log</code> ve Expo <code>.d.ts</code> erişimini engelliyor.</li>
+    <li><b>Sorun olmayanlar:</b> CRLF (LF doğrulandı), agent description bütçesi (4.4k karakter), VoltAgent/wshobson reviewer'ları bizimkilerden zayıf.</li>
+    <li><b>Memory tutarsızlığı:</b> <code>ecc-kurulumu.md</code> "geniş fan-out → Explore" diyor, <code>CLAUDE.md:59</code> Explore'u yasaklıyor.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Upstream güncellemelerinde yerel iyileştirmeleri korumak</h2>
+  <p>Ölçüm: ECC pin'i <code>9ac593b5</code>'ten upstream HEAD'e 1133 commit var ve bunların hiçbiri yerelde derinleştirilmiş 18 agent dosyasına dokunmamış (~589 satır yerel emek, çakışma 0). ECC skill'leri ve plugin cache'i yerelde düzenlenmemiş. Tek istisna laravel-security: upstream'de +22 satırlık güvenlik düzeltmesi bekliyor.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Varlık</th><th>Yerel ayrışma</th><th>Upstream dokundu mu</th><th>Ne yap</th></tr></thead>
+    <tbody>
+      <tr><td>18 ECC agent'ı</td><td class="num">~589 satır</td><td>Hayır (aynı yol)</td><td>Dokunma; güncellemede taşıma/yeniden adlandırma kontrolü</td></tr>
+      <tr><td>35 ECC skill'i</td><td class="num">0</td><td>laravel-security +22</td><td>laravel-security'yi kopyala</td></tr>
+      <tr><td><code>ecc-local.patch</code></td><td class="num">—</td><td>PR #3107 aynı sorunu çözdü</td><td>Pin yükselene kadar tut; sonra kapsamları karşılaştır</td></tr>
+      <tr><td>Plugin cache</td><td class="num">0</td><td>—</td><td><code>claude plugin update</code></td></tr>
+      <tr><td>Tamamen yerel</td><td class="num">%100</td><td>upstream yok</td><td>Doğrudan düzenle, dotfiles'ta versiyonla</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>İki düzeltme.</b> (1) "Patch ölü" iddiası yanlıştı: patch yerel klonda zaten uygulanmış ve pinlenmiş commit'e temiz uygulanıyor; laptop bootstrap'i çalışır. Yalnız pin <code>7b7dfc6</code>'yı içeren bir sürüme yükselirse gereksizleşir, o zaman bile upstream çözümü <code>clickhouse-client</code>, <code>mongosh</code> ve <code>env -S</code> biçimlerini kapsamıyor olabilir. (2) Plugin skill'lerinde <code>skillOverrides</code>'ın çalışmaması bug değil, belgelenmiş tasarım.</p>
+
+  <div class="decision">
+    <h3>A · ECC kökenli agent ve skill'ler</h3>
+    <p><b>En güçlü itiraz:</b> "upstream dokunmadı" ölçümü yalnız aynı yoldaki değişikliği görür; dosyalar taşınırsa ya da toplu format değişirse sessizce sıfır görünür. Geçmiş, geleceği garanti etmez.</p>
+    <p><b>Öneri:</b> Klonda <code>local</code> branch tut, <code>git merge origin/main</code> ile 3-yollu birleştir. Script yazma; <code>git diff --stat</code> ve <code>git log --diff-filter=R</code> yeter. Upstream değişti + yerel 0 → kopyala; ikisi de değişti → <code>git merge-file</code>; upstream değişmedi → dokunma.</p>
+    <p><b>Neden iyi:</b> Bugünkü veride çakışma yok, güncelleme başına birkaç dakika. Yerel agent'lar aynı isimli plugin agent'larını zaten bastırıyor (resmi doküman). <b>Risk:</b> elle kopyalama adımı unutulabilir. <b>Alternatif:</b> ECC'yi tam plugin olarak kurmak; bilinçli kurulmayan hook ve skill'leri geri getirir.</p>
+    <p><b>Ne zaman yanlış olur:</b> Upstream agent dosyalarını aktif değiştirmeye başlarsa; o zaman ECC'yi fork'la ve <code>local</code> branch'i fork'ta tut.</p>
+  </div>
+  <div class="decision">
+    <h3>B · Plugin skill'leri (impeccable, ui-ux-pro-max, autoresearch)</h3>
+    <p><b>En güçlü itiraz:</b> CLAUDE.md kuralı deterministik değil. Aynı isimli yerel skill plugin skill'ini gölgelemez, ikisi de yüklenir; model çelişen iki talimatı birden görür.</p>
+    <p><b>Öneri:</b> Cache'te asla düzenleme yapma. Tercihleri CLAUDE.md'ye yaz, genel düzeltmeleri upstream'e PR olarak gönder, düzenli güncelle.</p>
+    <p><b>Alternatif (ağır özelleştirme gerekirse):</b> Plugin'i <code>/plugin</code> ile kapatıp skill'i <code>~/.claude/skills/</code>'e vendor et (graphify-windows deseni) ya da kendi fork'unu <code>ref</code>+<code>sha</code> pinli girişle ekle; <code>version</code> alanını sil.</p>
+    <p><b>Ne zaman yanlış olur:</b> Plugin metnindeki bir hata iş akışını bozuyorsa ve upstream PR'ı kabul etmiyorsa.</p>
+  </div>
+  <div class="decision">
+    <h3>C · Tamamen yerel varlıklar</h3>
+    <p>Buna karşı güçlü bir argüman yok, çünkü upstream yok. Doğrudan düzenle, dotfiles reposunda versiyonla. İstisnalar: claude.ai'deki eski synced proje-checklist'i kapat; orchestration gibi junction skill'leri <code>setup.ps1</code>'e ekle.</p>
+  </div>
+  <pre><code># Güncelleme prosedürü (aylık / ihtiyaç halinde, PowerShell)
+Copy-Item -Recurse ~/.claude/skills ~/.claude/backups/skills-pre-ecc-$(Get-Date -f yyyyMMdd)
+git -C ~/.claude/plugins/ecc fetch origin
+git -C ~/.claude/plugins/ecc diff --stat 9ac593b5..origin/main -- agents/ skills/
+git -C ~/.claude/plugins/ecc log --oneline 9ac593b5..origin/main -- scripts/hooks/gateguard-fact-force.js
+#   hook değiştiyse: yerel patch ile PR #3107 kapsamını karşılaştır, pin'i yükselt, setup.ps1 $eccSha güncelle
+#   değişen + yerelde dokunulmamış skill'leri kopyala (bugün: laravel-security)
+claude plugin marketplace update
+claude plugin update impeccable@impeccable
+claude plugin update ui-ux-pro-max@ui-ux-pro-max-skill
+#   memory: yeni pin SHA, değişen dosyalar, patch kararı</code></pre>
+</section>
+
+<section>
+  <h2>PRD'ler ve uygulama sırası</h2>
+  <div class="prds">
+    <div class="prd"><span class="eyebrow">PRD-1 · M1 M4 M5 M6</span><h3>Reviewer temeli</h3><p>Salt-okuma sözleşmesi, Verdict satırı, Stop hook ile araç politikası, ESLint, ponytail matcher, kırık atıflar.</p><code>prd-reviewer-temeli.md</code></div>
+    <div class="prd"><span class="eyebrow">PRD-2 · M2</span><h3>Stack uyumu</h3><p>security-reviewer Laravel dalı, database-reviewer MySQL/SQLite, react-reviewer React Native.</p><code>prd-stack-uyumu.md</code></div>
+    <div class="prd"><span class="eyebrow">PRD-3 · M3</span><h3>Zincir kuralları</h3><p>Lane tablosu, ortak bulgu şeması, doğrula-sonra-uygula, INCOMPLETE, re-review, diff hash.</p><code>prd-zincir-kurallari.md</code></div>
+    <div class="prd"><span class="eyebrow">PRD-4 · M7 M8 M9</span><h3>Skill, hook ve eval</h3><p>Türkçe description'lar, red-audit önceliği, doc hook düzeltmesi, reviewer eval seti.</p><code>prd-skill-hook-eval.md</code></div>
+  </div>
+  <ol class="list">
+    <li><b>Hemen:</b> ponytail matcher · ESLint <code>--ext</code> · kırık atıflar · laravel-security güncellemesi · eski synced proje-checklist'i kapat.</li>
+    <li><b>Eval seti</b> ile baseline al.</li>
+    <li><b>PRD-1 + PRD-2</b>, eval ile ölç.</li>
+    <li><b>PRD-3</b>, 10 commit boyunca gözle.</li>
+    <li><b>PRD-4 A/B</b> + 7 agent'ı arşivle + pr-test-analyzer kuralı.</li>
+    <li><b>Eval verisi varsa:</b> <code>/review-chain</code> komutu + commit hook zorlaması, diff dosyası paylaşımı (superpowers'ta −%37 token), yerleşik <code>/code-review low</code> karşılaştırması.</li>
+  </ol>
+  <h3>Kararlar (2026-10-16)</h3>
+  <ul class="list">
+    <li>silent-failure-hunter: scratchpad'de, ağsız deney script'i <b>serbest</b>.</li>
+    <li>Login, şifre sıfırlama ve OTP'de rate-limit eksikliği <b>MEDIUM</b>.</li>
+    <li>Küçük diff istisnası <b>≤10 satır</b>, tek dosya, auth/girdi/hata akışı yok → yalnız dil reviewer'ı.</li>
+    <li>Doc hatırlatması Stop'ta kalıyor; codemap yoksa yalnız <code>.md</code> + memory. <b>Uygulandı.</b></li>
+    <li>Eval seti tekrar sayısı: açık.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Kaynaklar</h2>
+  <div class="src">
+    <p><b>Resmi doküman</b><br><a href="https://code.claude.com/docs/en/sub-agents">sub-agents</a> · <a href="https://code.claude.com/docs/en/skills">skills</a> · <a href="https://code.claude.com/docs/en/hooks">hooks</a> · <a href="https://code.claude.com/docs/en/model-config">model-config</a> · <a href="https://code.claude.com/docs/en/plugin-evals.md">plugin-evals</a> · <a href="https://code.claude.com/docs/en/code-review-local.md">code-review-local</a> · <a href="https://code.claude.com/docs/en/plugins/host-marketplace">host-marketplace</a> · <a href="https://code.claude.com/docs/en/plugins/marketplace-reference">marketplace-reference</a> · <a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices">skill best practices</a></p>
+    <p><b>Anthropic referans uygulamaları</b><br><a href="https://github.com/anthropics/claude-code/blob/main/plugins/code-review/commands/code-review.md">code-review komutu</a> · <a href="https://github.com/anthropics/claude-code/tree/main/plugins/pr-review-toolkit">pr-review-toolkit</a> · <a href="https://github.com/anthropics/claude-code-security-review">claude-code-security-review</a> · <a href="https://github.com/anthropics/claude-code/tree/main/plugins/feature-dev/agents">feature-dev agents</a></p>
+    <p><b>Topluluk</b><br><a href="https://github.com/obra/superpowers/blob/main/docs/superpowers/specs/2026-06-09-sdd-task-scoped-review-dispatch-design.md">superpowers task-scoped review</a> · <a href="https://github.com/obra/superpowers/blob/main/skills/receiving-code-review/SKILL.md">receiving-code-review</a> · <a href="https://github.com/wshobson/agents">wshobson/agents</a> · <a href="https://github.com/VoltAgent/awesome-claude-code-subagents">VoltAgent</a> · <a href="https://github.com/qodo-ai/pr-agent/blob/main/pr_agent/settings/configuration.toml">qodo pr-agent</a> · <a href="https://www.iclr.cc/virtual/2026/10017268">CR-Bench</a> · <a href="https://eslint.org/docs/next/use/migrate-to-9.0.0">ESLint 9</a></p>
+    <p><b>Upstream</b><br><a href="https://github.com/affaan-m/ECC">ECC</a> · <a href="https://github.com/affaan-m/ECC/issues/3024">ECC #3024</a> · <a href="https://github.com/affaan-m/ECC/pull/3107">ECC PR #3107</a> · <a href="https://github.com/anthropics/claude-code/issues/89724">claude-code #89724</a></p>
+    <p><b>Yerel kanıt</b><br><code>autoresearch/scenario-261016-0403/</code> (transcript adları ve alıntılarla) · <code>autoresearch/improve-261016-0403/</code> · <code>reports/agent-skill-iyilestirme-raporu.md</code></p>
+  </div>
+</section>
+
+<footer>Sınırlar: oranlar regex tabanlı; python/csharp kartları n=1/n=0; rakip matrisindeki bazı dosyaların yalnız varlığı doğrulandı; impeccable PR hızı ve ECC commit sayısı tek ajan ölçümü.</footer>
+</div>
+
+<script>
+const D=[
+ ["typescript-reviewer","reviewer","fix",75,"eslint --ext ESLint 9'da geçersiz (:29,105); pre-commit'te anlamsız PR/merge adımı; /react-review kırık atıf; raporu dosyaya yazıp \"yazıldı\" döndü; File: formatı 0/75.","Lint → npm run lint --if-present, yalnız değişen satır bloklar; pre-commit varsayılan mod; read-only + Verdict.","AC pr-review-toolkit code-reviewer: güven ≥80, linter'ın yakalayacağını raporlama.","Yüksek"],
+ ["php-reviewer","reviewer","fix",69,"Onay PHPStan'a bağlı ama 41/69 \"çalıştırmadım\"; Stop hook'un koştuğunu tekrar (12× phpstan); tests/Feature/ZZZScratch… yazıp sildi; Livewire #[Rule] eski; ponytail: yorumunu risk kabulü sayıyor.","Verdict'te tools: ran | relied on Stop hook; read-only blok; Livewire 3/4 #[Validate]/#[Locked]; lane tablosu.","ECC php-reviewer (upstream değişmemiş); AC'den güven eşiği.","Yüksek"],
+ ["security-reviewer","reviewer","fix",60,"npm/Express odaklı, 0 composer audit; rate-limit HIGH (:68); security-review atfı kırık ve /security-review ile isim çakışması; Apache açıp taskkill //F //IM httpd.exe.","Stack algılama + Laravel dalı + hard exclusions + execution limits + sır maskeleme.","anthropics/claude-code-security-review: HARD EXCLUSIONS, 1-10 güven <8 düşür, FP-filtre alt görevi.","Yüksek"],
+ ["silent-failure-hunter","reviewer","fix",28,"En değerli bulguları üreten reviewer ama tanım 68 satır, severity yok; bir önerisi düzeltilmiş P2 hatasını geri getirecekti; *.log scout-block'a takılıyor.","\"Belgelenmiş karara/teste karşı mı?\" kontrolü; Laravel rescue()/report()/Cache::add kalıpları; Verdict.","AC silent-failure-hunter (130 satır): Hidden Errors, prod mock fallback yasağı, severity tanımları.","Orta-yüksek"],
+ ["database-reviewer","reviewer","fix",14,"PostgreSQL/Supabase (RLS, psql); projeler MySQL 8 + SQLite; 9/14 prompt düzeltme yazmak zorunda kaldı; database-migrations kırık, mysql-patterns atıfsız.","Step 0 motor algılama; MySQL strict mode, utf8mb4 Türkçe collation; migrate --pretend.","Muadiller yalnız varlık düzeyinde doğrulandı; asıl açık iç uyumsuzluk.","Yüksek"],
+ ["react-reviewer","reviewer","fix",8,"Kullanımın %100'ü React Native/Expo, kurallar Next.js/RSC; rules/react/* ve /react-* yok; ana oturum bir kez rolleri birleştirdi.","RN/Expo bölümü (iOS announceForAccessibility, 44pt/48dp, expo-secure-store); web kuralları koşullu.","ECC react-reviewer; sahiplik tablosu (:19-34) zincirdeki tek iyi lane modeli.","Orta"],
+ ["python-reviewer","reviewer","keep",1,"Örneklem yok; Pythonic stil maddeleri HIGH.","Stil maddelerini MEDIUM'a indir; Windows python notu.","ECC python-reviewer.","Düşük"],
+ ["csharp-reviewer","reviewer","keep",0,"Kullanım yok, stack'te C# yok; CLAUDE.md'de .cs kuralı var.","Yalnız ortak blok (read-only + Verdict).","ECC csharp-reviewer.","Düşük"],
+ ["outside-view-reviewer","process","fix",23,"En iyi maliyet/fayda (0.46M token, ~20 kaynak). Ama web okuyan tek agent ve injection savunması yok; Bash kısıtsız: müşteri prod'una curl, php -r; snippet'i kaynak sanma.","Untrusted content + tool limits bloğu; her \"worth reconsidering\" için ≥1 açılmış sayfa; CVE için NVD/GHSA; Verdict başa.","Doğrudan muadil yok, yerel ve özgün.","Yüksek"],
+ ["code-explorer","process","fix",17,"\"Salt okuma\" iken artisan tinker ve node simülasyonu koştu; Dependencies 15 raporun 7'sinde; \"kısa\" istenen rapor 9-21K karakter; tur bütçesi yok.","Bash'i silmeden salt-okuma komut listesi (memory'deki ölçüm korunur); Dependencies + Doğrulama zorunlu; uzunluk bütçesi.","AC feature-dev code-explorer: okunması zorunlu 5-10 dosya listesi.","Yüksek"],
+ ["doc-updater","process","fix",4,"08-08 derinleştirmesi dosyada yok; en pahalı süreç agent'ı (7.93M cache-read, 107 tur); Stop hook 83 tetikleme → 4 koşu.","Hook düzeltmesi (quotePath, imza, worktree) + Varsayılan mod + stack komutları + bütçe.","AC comment-analyzer: doküman iddialarını koda karşı doğrula.","Orta-yüksek"],
+ ["pr-test-analyzer","process","rule",0,"Hiçbir reviewer'ın sormadığı \"yanlış olsa hangi test kırılırdı?\" sorusu; origin/HEAD varsayımı yerel-only repolarda boş diff.","Faz/dalga sonu, merge veya PR öncesi tek sefer; git merge-base fallback. İlk 3 koşuda critical gap yoksa arşivle.","AC pr-test-analyzer; bizimki zaten derinleştirilmiş.","Orta"],
+ ["code-architect","process","arch",0,"Plan modu + code-explorer + outside-view + Karar Eleştirisi ile örtüşüyor; kullanılmayanların en kalitelisi.","Arşivle; Precedent fikrini code-explorer'a taşı.","AC feature-dev code-architect.","Orta"],
+ ["tdd-guide","process","arch",0,"583 test koşusu inline; Write yetkili alt agent implementasyon sahipliğini böler.","Arşivle; tdd-workflow skill'i kalır.","superpowers TDD'yi skill olarak kurgulamış.","Orta-yüksek"],
+ ["refactor-cleaner","process","arch",0,"Karpathy #3 ve commit kuralıyla çelişiyor (\"Commit after each batch\").","Arşivle; dynamic-reference listesini (:60-76) php/ts reviewer'a taşı.","AC code-simplifier; /simplify ve ponytail aynı alanı kapsıyor.","Orta-yüksek"],
+ ["performance-optimizer","process","arch",0,"464 satır jenerik; perf işi pagespeed-plan / web-perf skill'leriyle yapılıyor.","Arşivle.","WS/VA performance-engineer (varlık).","Orta"],
+ ["build-error-resolver","process","arch",0,"TS-only, kırık atıflar (architect, planner), rm -rf node_modules package-lock.json; 14 build hatası inline çözüldü.","Arşivle.","ECC build-error-resolver.","Yüksek"],
+ ["react-build-resolver","process","arch",0,"Kapsamında Metro/Expo yok; tek React projesi Expo.","Arşivle; React web projesi açılırsa geri al.","ECC react-build-resolver.","Yüksek"],
+ ["rag-pipeline-reviewer","process","arch",0,"RAG projesi yok; kırık handoff'lar (mle-reviewer, docs-lookup).","Arşivle; vektör deposu eklenirse geri al.","ECC ile birebir aynı.","Yüksek"],
+ ["impeccable","skill","keep",11,"Plugin. Kurulu 4.3.1, upstream cli-v4.6.0; Orca/headless'te live mod kırılgan.","claude plugin update; proje kuralları CLAUDE.md'ye, cache'e değil.","pbakaus/impeccable.","Yüksek"],
+ ["ui-ux-pro-max","skill","keep",3,"Plugin. 2.13.0 → 2.15.0; impeccable ile rol çakışması.","CLAUDE.md: impeccable = üretim/craft, ui-ux-pro-max = veri/palet sorgusu.","nextlevelbuilder/ui-ux-pro-max-skill.","Orta"],
+ ["autoresearch","skill","keep",5,"Plugin, kurulu = latest; description kısa; scout-block hook'u reviewer erişimini engelliyor.","Güncelleme yok; scout-block için .ckignore istisnası.","uditgoenka/autoresearch.","Yüksek"],
+ ["orchestration","skill","fix",3,"Yerel junction (.agents/skills, Orca); dotfiles'a girmez → laptopta yok.","setup.ps1'e junction kurulumu; Orca-bağımsız tetikleyici.","—","Orta-yüksek"],
+ ["red-audit","skill","fix",2,"\"açıkları denetle\" → laravel-security tetiklendi; description ASCII Türkçe; kullanıcı \"terim bilmediğim için tetiklenmez\" dedi.","Türkçe karakterli günlük tetikleyiciler; \"Laravel'de de önce red-audit\" notu; alt agent'lara offensive-* tam yolları.","—","Yüksek"],
+ ["mobil-checklist","skill","fix",1,"ASCII Türkçe description; yalnız açık çağrıyla kullanıldı.","Türkçe description, en güçlü tetikleyici başa.","—","Orta"],
+ ["proje-checklist","skill","fix",1,"İki sürüm birden yükleniyor: yerel 11 başlık + claude.ai synced eski 6 başlık.","claude.ai Skills panelinde eskisini kapat; Türkçe description.","—","Yüksek"],
+ ["laravel-security","skill","fix",1,"ECC temiz kopya; upstream'de +22 satır güvenlik düzeltmesi (s3 + authorize); 948 satır (kılavuz <500).","ECC'den güncelle (yerel edit 0); sonra references/'a böl.","affaan-m/ECC.","Yüksek"],
+ ["i18n-sync","skill","fix",1,"Description tamamen İngilizce.","TR tetikleyici: \"eksik çeviriler\", \"yeni dil ekle\".","—","Orta-yüksek"],
+ ["healthcare-phi-compliance","skill","fix",1,"KVKK description'da yok; kullanıcının fiili bağlamı KVKK.","\"KVKK\" tetikleyicisi.","—","Orta-yüksek"]
+];
+const DEC={fix:["Düzelt","c-fix"],arch:["Arşivle","c-arch"],rule:["Kural ekle","c-rule"],keep:["Tut","c-keep"]};
+const KIND={reviewer:"reviewer",process:"süreç agent'ı",skill:"skill"};
+const st={kind:"all",dec:"all",q:""};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function render(){
+  const q=st.q.toLocaleLowerCase("tr");
+  const rows=D.filter(r=>(st.kind==="all"||r[1]===st.kind)&&(st.dec==="all"||r[2]===st.dec)&&(!q||r.join(" ").toLocaleLowerCase("tr").includes(q)));
+  document.getElementById("cards").innerHTML=rows.map(r=>`<article class="card"><div class="card-h"><h3>${esc(r[0])}</h3><span class="chip ${DEC[r[2]][1]}">${DEC[r[2]][0]}</span><span class="runs">${KIND[r[1]]} · ${r[3]} koşu · güven ${esc(r[7])}</span></div><dl><dt>Sorunlar</dt><dd>${esc(r[4])}</dd><dt>İlk öneri</dt><dd>${esc(r[5])}</dd><dt>Muadil</dt><dd>${esc(r[6])}</dd></dl></article>`).join("")||`<p class="count">Bu filtreyle eşleşen kart yok.</p>`;
+  document.getElementById("count").textContent=`${rows.length} / ${D.length} kart`;
+}
+document.querySelectorAll(".seg button").forEach(b=>b.addEventListener("click",()=>{
+  st[b.dataset.f]=b.dataset.v;
+  b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b?"true":"false"));
+  render();
+}));
+document.getElementById("q").addEventListener("input",e=>{st.q=e.target.value;render();});
+render();
+</script>

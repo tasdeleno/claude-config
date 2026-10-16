@@ -1,0 +1,36 @@
+## Review bulguları (staged: `LeadController.php` + `create_leads_table` migration)
+
+Ben yalnızca `git diff --staged` çıktısını ve `git ls-files` listesini inceledim. Test, lint veya migration çalıştırmadım.
+
+### 1. [YÜKSEK] Validation kuralları migration kolon uzunluklarıyla uyuşmuyor
+- `LeadController.php:10`: `name` ve `message` için yalnızca `required|string` var, `max` yok.
+- Migration'da `name` `string(50)`, `message` `string(100)`.
+- Laravel'in varsayılan MySQL strict modunda 50 karakterden uzun bir `name` veya 100 karakterden uzun bir `message` gönderilirse insert `SQLSTATE 22001 Data too long` hatası verir. İstemci 422 yerine 500 alır.
+- `config/database.php` bu repoda yok. Strict mod kapalıysa veri sessizce kesilir, bu da daha kötüdür.
+- 100 karakter bir "message" için de dar görünüyor. Uzunluğun bilinçli seçildiğinden emin ol.
+- Düzeltme:
+  ```php
+  $request->validate([
+      'name'    => 'required|string|max:50',
+      'message' => 'required|string|max:100',
+  ]);
+  ```
+  İstersen `message` kolonunu `text` yapıp `max:2000` gibi bir üst sınır koyabilirsin.
+
+### 2. [ORTA] Route tanımı yok, endpoint ulaşılamaz durumda
+- Staged dosyalar arasında `routes/*` yok. `git ls-files` yalnızca `.env.example`, `phpunit.xml` ve bu iki dosyayı gösteriyor, yani repo iskelet halinde.
+- Route başka bir commit'te gelecekse sorun yok. Gelecekse, public bir form endpoint'i olacağı için `throttle` middleware'i ekle (spam/abuse). Şu an doğrulayabildiğim bir şey yok.
+
+### 3. [DÜŞÜK] `DB::table()->insert()` yerine Eloquent model
+- Bu repoda model yok. `Lead` modeli ve `$fillable` olmaması bir güvenlik açığı değil, çünkü `validate()` çıktısı zaten beyaz liste gibi çalışıyor.
+- Sonradan okuma, listeleme veya admin paneli eklenirse model gerekecek. Şimdilik YAGNI, bilgi olarak not ediyorum.
+
+### Sorun bulunmayanlar
+- SQL injection yok: `insert()` parametreli çalışıyor.
+- Migration'da `down()` var, `timestamps` kullanılmış, `id()` bigint.
+- Kolon indeksi gerektiren bir sorgu yok, çünkü bu diff'te okuma yok.
+
+### Karar
+Commit'ten önce #1'i düzelt. #2 için route'un hangi commit'te geleceğini netleştir.
+
+Commit mesajına "Reviewer bulguları" bölümünde şunu yaz: database-reviewer ve php-reviewer çalıştırıldı, #1 uygulandı. Doğrulama kısmında "çalıştırılmadı" yaz, çünkü test veya migration koşulmadı.

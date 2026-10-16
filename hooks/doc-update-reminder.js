@@ -3,12 +3,14 @@
  * Stop Hook: is bitince dokumantasyon guncelleme hatirlaticisi
  *
  * Oturumda anlamli KAYNAK KOD degisikligi varsa (dokuman/config/lock dosyalari
- * haric), Claude durmadan once doc-updater agent'ini (/update-docs,
- * /update-codemaps) calistirmaya zorlanir.
+ * haric), Claude durmadan once dokumantasyonu guncellemeye zorlanir:
+ *  - Projede codemap varsa (docs/CODEMAPS veya CODEMAPS): doc-updater ile
+ *    /update-docs + /update-codemaps.
+ *  - Codemap yoksa: yalnizca etkilenen mevcut .md dosyalari + proje memory'si;
+ *    codemap uretilmez.
  *
- * Dedupe: ayni "anlamli diff" icin tekrar tekrar bloklamaz. Imza (dosya listesi +
- * diff icerigi hash'i) oturum bazli state dosyasinda tutulur; diff degismedikce
- * bir daha sormaz. Yeni bir kaynak degisikligi gelirse yeniden bloklar.
+ * Dedupe: imza = degisen kaynak dosya KUMESI (diff icerigi degil). Ayni dosyalar
+ * uzerinde yeni edit'ler tekrar bloklamaz; kumeye yeni bir dosya girerse sorar.
  *
  * Devre disi: DOC_UPDATE_STOP_CHECK=off
  */
@@ -32,7 +34,9 @@ function exec(cmd, args, cwd) {
 }
 
 function changedFiles(root) {
-  const r = exec('git', ['status', '--porcelain'], root);
+  // quotePath=false: Turkce karakterli adlar tirnakli/oktal kacisli gelmesin (yoksa .md filtresi kacirir).
+  // untracked-files=all: yeni klasor tek satir "dir/" degil, icindeki dosyalar olarak gelsin.
+  const r = exec('git', ['-c', 'core.quotePath=false', 'status', '--porcelain', '--untracked-files=all'], root);
   if (r.status !== 0 || !r.stdout) return [];
   return r.stdout
     .split('\n')
@@ -41,13 +45,12 @@ function changedFiles(root) {
     .map(f => (f.includes(' -> ') ? f.split(' -> ').pop() : f));
 }
 
-function diffSignature(root, files) {
-  const tracked = exec('git', ['diff', '--', ...files], root).stdout || '';
-  const staged = exec('git', ['diff', '--cached', '--', ...files], root).stdout || '';
-  return crypto
-    .createHash('sha256')
-    .update(files.slice().sort().join('\n') + tracked + staged)
-    .digest('hex');
+function fileSetSignature(files) {
+  return crypto.createHash('sha256').update(files.slice().sort().join('\n')).digest('hex');
+}
+
+function hasCodemaps(root) {
+  return ['docs/CODEMAPS', 'CODEMAPS'].some(d => fs.existsSync(path.join(root, d)));
 }
 
 function main(raw) {
@@ -66,7 +69,7 @@ function main(raw) {
   const meaningful = changedFiles(root).filter(f => !EXCLUDE_RE.test(f));
   if (meaningful.length === 0) return;
 
-  const sig = diffSignature(root, meaningful);
+  const sig = fileSetSignature(meaningful);
 
   fs.mkdirSync(STATE_DIR, { recursive: true });
   const stateFile = path.join(STATE_DIR, `${String(data.session_id || 'nosession').replace(/[^\w-]/g, '_')}.json`);
@@ -76,6 +79,23 @@ function main(raw) {
 
   fs.writeFileSync(stateFile, JSON.stringify({ sig, ts: new Date().toISOString() }));
 
+  // memory dizini transcript'in yanindadir: ~/.claude/projects/<proje>/memory
+  const memoryDir = data.transcript_path ? path.join(path.dirname(data.transcript_path), 'memory') : '';
+  const memoryLine = memoryDir && fs.existsSync(memoryDir)
+    ? `- Proje memory'si (${memoryDir}): bu oturumda kalıcı bir karar/kısıt/workflow değiştiyse ilgili memory dosyasını güncelle (yoksa ekleme yapma). Bunu sen yap; konuşma bağlamı sende.`
+    : '- Bu oturumda kalıcı bir karar/kısıt/workflow değiştiyse proje memory\'sine yaz (yoksa ekleme yapma).';
+
+  const action = hasCodemaps(root)
+    ? [
+      'Durmadan önce doc-updater agentını çalıştır (/update-docs ve /update-codemaps) ki doküman ve codemap kodla senkron kalsın.',
+      memoryLine,
+    ]
+    : [
+      'Bu projede codemap yok — codemap ÜRETME. Durmadan önce yalnızca:',
+      '- Değişiklikten etkilenen MEVCUT .md dosyalarını (README, docs/*.md, CLAUDE.md/AGENTS.md vb.) güncelle; yeni doküman dosyası açma. Az dosyaysa inline yap, çoksa doc-updater agentına "yalnız md modu" ve dosya listesiyle ver.',
+      memoryLine,
+    ];
+
   const shown = meaningful.slice(0, 10);
   process.stdout.write(JSON.stringify({
     decision: 'block',
@@ -84,8 +104,9 @@ function main(raw) {
       ...shown.map(f => `  - ${f}`),
       meaningful.length > shown.length ? `  ... +${meaningful.length - shown.length} dosya daha` : '',
       '',
-      'Durmadan önce doc-updater agentını çalıştır (/update-docs ve /update-codemaps) ki dokümantasyon kodla senkron kalsın. Gerek yoksa (ör. dokümantasyona yansıması gereken bir değişiklik değilse) kullanıcıya sebebiyle birlikte bildir.',
-      'Bu aynı değişiklik için bir daha sormaz; yeni bir kaynak değişikliği gelirse tekrar hatırlatır.',
+      ...action,
+      'Güncellenecek bir şey yoksa kullanıcıya tek satır sebeple bildir.',
+      'Aynı dosya kümesi için bir daha sormaz; kümeye yeni bir kaynak dosya girerse tekrar hatırlatır.',
     ].filter(Boolean).join('\n'),
   }));
 }

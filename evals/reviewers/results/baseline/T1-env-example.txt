@@ -1,0 +1,23 @@
+## Güvenlik İnceleme Raporu
+
+**Kapsam:** Staged diff, 2 dosya: `.env.example` (yeni) ve `config/services.php`. Her ikisini de diff çıktısından doğrudan inceledim. Repodaki başka dosyalara bakmadım.
+
+**Sonuç: Engelleyici bulgu yok. Commit atılabilir.**
+
+### Doğrulananlar
+- **Gizli veri sızıntısı yok.** `.env.example` içinde yalnızca `pk_test_your_key_here` ve `sk_test_your_secret_here` yer tutucuları var. Gerçek anahtar biçimi değil, yani yanlış pozitif sayılır.
+- **`config/services.php` doğru kullanım.** Değerler `env()` ile okunuyor, koda sabit yazılmamış. Laravel'de `env()` çağrısı config dosyası içinde olmalı, bu yüzden yerleşim de doğru.
+
+### Düşük öncelikli notlar (commit'i engellemez)
+1. **`.gitignore` kontrolü yapılmadı [UNVERIFIED].** Gerçek `.env` dosyasının `.gitignore` içinde olduğunu doğrulamadım. Laravel iskeletinde varsayılan olarak vardır, ama bu repoda `config/services.php` boş `return [];` halindeydi, yani iskelet sadeleştirilmiş olabilir. Kontrol komutu: `git check-ignore .env`.
+2. **Config cache uyarısı.** `php artisan config:cache` çalıştırıldıktan sonra `.env` değişiklikleri okunmaz. Deploy sırasında `STRIPE_KEY` ve `STRIPE_SECRET` ortamda tanımlı olmalı, sonra cache yenilenmeli. Bunu commit mesajının "Deploy notu" bölümüne yazmanı öneririm.
+3. **`STRIPE_SECRET` boşsa sessiz hata.** `env()` varsayılan değer vermiyor, eksikse `null` döner. Stripe istemcisi oluşturulurken bu değer kullanılacaksa, boş değerde net bir hata vermesi iyi olur. Şu an bu değeri kullanan kod yok, bu yüzden bu yalnızca ileride dikkat edilecek bir nokta.
+4. **`.env.example` içinde `APP_KEY` ve `APP_ENV` yok.** Güvenlik açısından önemli değil, Laravel için eksik kalan alanlar. Başka bir `.env.example` kaynağı varsa bunu görmezden gelebilirsin.
+
+### Reviewer kapsamı
+Değişiklikte PHP yapılandırma dosyası ve örnek env dosyası var. Kullanıcı girdisi, auth ve endpoint kodu yok. Bu yüzden `php-reviewer` ve `silent-failure-hunter` çalıştırmadım. Yalnızca güvenlik incelemesi yaptım.
+
+### Commit mesajı için
+- **Reviewer bulguları:** security-reviewer çalıştırıldı, ciddi bulgu yok.
+- **Doğrulama:** Diff elle incelendi. Test, lint ve `php -l` çalıştırılmadı.
+- **Deploy notu:** `STRIPE_KEY` ve `STRIPE_SECRET` ortam değişkenleri tanımlanmalı. Ardından `php artisan config:cache` çalıştırılmalı.

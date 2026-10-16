@@ -1,0 +1,43 @@
+**Karar: BLOCK.** İki CRITICAL bulgu var. PHPStan, Pint ve testleri çalıştırmadım. Değişiklik yalnızca 2 dosya ve bulgular diff'ten doğrudan okunuyor.
+
+---
+
+**[CRITICAL] Mass assignment: `$guarded = []`**
+File: app/Models/User.php:8
+Issue: Önceden `$fillable = ['name', 'email']` beyaz listesi vardı. Bunun yerine `$guarded = []` konuldu ve tüm kolonlar yazılabilir hale geldi. `password`, `is_admin`, `role`, `email_verified_at` gibi hassas alanlar da buna dahil. Hangi kolonların olduğunu migration'lardan doğrulamadım. Sorun kolon adından bağımsız, çünkü koruma tamamen kalkıyor.
+Fix: Değişikliği geri al ve `protected $fillable = ['name', 'email'];` olarak bırak. Yeni bir alan gerekiyorsa onu açıkça listeye ekle.
+
+**[CRITICAL] `$request->all()` ile `update()` (ayrıcalık yükseltme)**
+File: app/Http/Controllers/ProfileController.php:12
+Issue: Doğrulanmamış istek gövdesi doğrudan `update()`'e veriliyor. Yukarıdaki `$guarded = []` ile birleşince oturum açmış herhangi bir kullanıcı `is_admin=1` veya `password=...` gönderip kendi yetkisini yükseltebilir ya da hesabını ele geçirebilir. `$fillable` geri gelse bile validasyon yok: `email` biçimi ve benzersizliği kontrol edilmiyor, `name` için uzunluk sınırı yok.
+Fix: FormRequest kullan ve yalnızca doğrulanmış alanları ver:
+```php
+public function update(UpdateProfileRequest $request): RedirectResponse
+{
+    $request->user()->update($request->validated());
+    return back();
+}
+// rules(): 'name' => ['required','string','max:255'],
+//          'email' => ['required','email','max:255', Rule::unique('users')->ignore($this->user()->id)],
+```
+
+**[HIGH] PHP standartları**
+File: app/Http/Controllers/ProfileController.php:1-16
+- `declare(strict_types=1);` yok.
+- `update()` için dönüş tipi yok (`RedirectResponse` olmalı).
+- Sınıf `final` değil.
+- `use App\Models\User;` kullanılmıyor.
+
+File: app/Models/User.php
+- Modelde `$casts` yok. `User` doğrudan `Illuminate\Database\Eloquent\Model`'den türüyor, `Authenticatable`'dan değil. `$request->user()` ile çalışması için bunun doğru olduğunu doğrulamak gerek. Bu bir [UNVERIFIED]: auth guard'ın provider ayarına (`config/auth.php`) bakmak gerekir.
+
+**[MEDIUM] Eksik e-posta doğrulama akışı**
+File: app/Http/Controllers/ProfileController.php:12
+Issue: E-posta değişirse `email_verified_at` sıfırlanmıyor. Bu, yukarıdaki validasyon eklenirken birlikte ele alınmalı.
+
+**[MEDIUM] Test yok**
+Profil güncelleme için feature testi eklenmemiş. Özellikle `is_admin` veya `password` gönderildiğinde bunların değişmediğini doğrulayan bir test gerekir.
+
+---
+
+**Özet:** `User.php` değişikliği geri alınmalı, controller FormRequest ile yeniden yazılmalı ve mass-assignment denemesini doğrulayan bir test eklenmeli. Bunlar yapılmadan commit atılmamalı.

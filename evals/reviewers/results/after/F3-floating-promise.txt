@@ -1,0 +1,17 @@
+**Kapsam:** Staged diff'te tek dosya var, `src/sync.ts` (+7 satır). Typecheck ve lint çalıştırmadım. Stop hook'una güvendim ve bulgu statik okumadan çıktı.
+
+**Bulgular**
+
+[HIGH] src/sync.ts:6-8 | Async correctness (`forEach(async)`) | confidence 98 | `ids.forEach(async ...)` döndürülen promise'leri beklemez. `syncAll`, `save` çağrıları bitmeden `'done'` döndürür. | `await Promise.all(ids.map((id) => save(id)));` kullanın. Sıra önemliyse `for...of` ile `await save(id)` yazın.
+```ts
+ids.forEach(async (id) => { await save(id); });
+return 'done';   // save() henüz bitmedi
+```
+Senaryo: Çağıran `await syncAll(ids)` yazıp sonrasında "senkron tamam" diye UI'ı günceller veya uygulamayı kapatır. Bu sırada istekler sürüyordur.
+Bir `save` reddedilirse (ağ hatası) hata kimseye yakalanmaz. Bu, unhandled promise rejection olur. Hata çağırana da ulaşmaz, `syncAll` başarılı görünür. Veri kaybı sessiz kalır.
+
+[LOW] src/sync.ts:9 | Best practice | confidence 80 | `Promise<string>` ile `'done'` döndürmek bilgi taşımıyor. `Promise<void>` yeterli, ya da hangi id'lerin başarısız olduğunu veren bir sonuç döndürülmeli (`Promise.allSettled`). | Dönüş tipini `void` yapın.
+
+Not: `save` içinde `response.ok` kontrolü yok, yani 4xx/5xx hataları da başarı sayılır. Bu bulgu diff'in dışında (mevcut kod). Düzeltilmezse `Promise.all` düzeltmesi HTTP hatalarını yakalamaz. Ayrı bir iş olarak ele alın.
+
+Verdict: BLOCK — 0/1/0/1; tools: git diff --staged | relied on Stop hook

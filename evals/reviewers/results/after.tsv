@@ -1,0 +1,9 @@
+case	agent	kind	hit	fp	verdict	repo_clean	seconds	cost_usd
+F1-mass-assign-php	php-reviewer	bug	1		1	1	39	0.09207019999999999
+F1-mass-assign-security	security-reviewer	bug	1		1	1	41	0.0697479
+F2-swallowed-catch	silent-failure-hunter	bug	1		1	1	48	0.09658710000000001
+F3-floating-promise	typescript-reviewer	bug	1		1	1	28	0.0771048
+F4-mysql-length	database-reviewer	bug	1		1	1	24	0.0759846
+F5-rn-token-storage	react-reviewer	bug	1		1	1	43	0.09843260000000001
+T1-env-example	security-reviewer	trap		0	1	1	23	0.0696345
+T2-public-rate-limit	security-reviewer	trap		0	1	1	37	0.0640477

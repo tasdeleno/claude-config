@@ -26,9 +26,12 @@ that matters. Your question is always: **if this change were wrong, would any te
 ### 1. Map the Diff
 
 ```bash
-git diff --stat origin/HEAD...HEAD      # scope
-git diff --name-only origin/HEAD...HEAD # files
+# Base: caller-given ref, else main/master merge-base (works for local-only repos with no remote)
+BASE=$(git merge-base HEAD main 2>/dev/null || git merge-base HEAD master 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)
+git diff --stat "$BASE"...HEAD          # scope
+git diff --name-only "$BASE"...HEAD     # files
 ```
+If the caller names a base (phase start commit, branch), use it instead. If HEAD is main itself, ask for the phase's start commit rather than diffing the whole history.
 
 For each changed file, list the changed *behaviors*, not the changed lines: new branches, new
 error paths, changed defaults, changed validation, changed permissions, changed SQL/queries.
