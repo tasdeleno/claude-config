@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: cc40078c-b1d5-4098-aa0a-6e5539bacaf9
-  modified: 2026-07-24T22:10:20.693Z
+  modified: 2026-10-16T09:25:22.000Z
 ---
 
 2026-07-25'te `~/.claude/skills/` altındaki elle kopyalanmış skiller plugin'e taşındı. Güncelleme artık:
@@ -19,6 +19,22 @@ Doğrulanmış kaynaklar (hepsi orijinal, fork değil — GitHub API `fork` bayr
   `slides`, `ui-styling`, `banner-design`, `design-system` skillerini de yükler
 - autoresearch → uditgoenka/autoresearch (~5k★)
 - graphify → Graphify-Labs/graphify (~95k★); pip paketi adı `graphifyy` (çift y)
+
+- brag (+brag-slim) → latent-spaces/brag (2026-10-16 plugin olarak kuruldu, `bootstrap/plugins.ps1`'e eklendi).
+  Yalnız skill + ses varlıkları, hook/MCP yok. Opus 5.5'te otomatik brag-slim'e geçer; tam mod
+  `/brag --full` (ses için `--voice`). **Tam kurulum yapıldı (2026-10-16):** hyperframes@hyperframes
+  plugin (heygen-com/hyperframes, 0.8.164; Claude tarafında hook/MCP yok; kurulumdaki "84 LFS
+  pointer" uyarısı yalnız repo'nun test baseline'ları — skill'lerde yok, `lfs pull` gereksiz),
+  FFmpeg 8.1 kullanıcı PATH'inde (`%LOCALAPPDATA%\ffmpeg`, admin yok → choco kullanılamadı),
+  Kokoro (`pip --user kokoro-onnx soundfile`). brag cue script'i `uv run` ile kendi bağımlılığını
+  kuruyor (librosa 0.11 Py3.14'te çalıştı). `npx hyperframes doctor` zorunlu kalemler ✓, smoke
+  render 10 sn 1080p ✓. `hyperframes init` skill'leri GitHub'dan da kurar → plugin varken
+  `HYPERFRAMES_SKIP_SKILLS=1`. İkisi de kullanıcı onayıyla `settings.json` env'e kondu:
+  `HYPERFRAMES_SKIP_SKILLS=1` (çift skill kopyası olmasın) ve `HYPERFRAMES_NO_TELEMETRY=1`.
+
+Değerlendirilip ALINMAYAN: tester-army/e2e (2026-10-16). Kendi `e2e` çatısına bağlı (agent.act +
+model sağlayıcı, v0.21); genel Playwright rehberi değil. Kullanıcının tek e2e kurulumu FBA'da düz
+`@playwright/test` → ECC `e2e-testing` skill'i kaldı. Mobil (Expo) uçtan uca test istenirse yeniden bak.
 
 Elenen klonlar: rhanka/graphify, mikrammullah-ponytail, gessniio/impeccable_SKILL_CLAUDE,
 WAAMEngineer/ui-ux-pro-max-skill, zhongpei/autoresearch-skills, Muminur/autoresearch-*.

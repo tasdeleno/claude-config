@@ -2,7 +2,10 @@
   "env": {
     "GATEGUARD_EXEMPT_GLOBS": "**/lang/**,**/tests/**,**/*.md,**/public/build/**,**/scratchpad/**",
     "GATEGUARD_BASH_ROUTINE_DISABLED": "1",
-    "GATEGUARD_FACT_FORCE_FULL_DENIALS": "1"
+    "GATEGUARD_FACT_FORCE_FULL_DENIALS": "1",
+    "PONYTAIL_SUBAGENT_MATCHER": "^(general-purpose|claude|fork)$",
+    "HYPERFRAMES_NO_TELEMETRY": "1",
+    "HYPERFRAMES_SKIP_SKILLS": "1"
   },
   "permissions": {
     "allow": [
@@ -102,16 +105,6 @@
             "timeout": 5
           }
         ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "PreCompact": [
@@ -145,11 +138,12 @@
         ]
       },
       {
+        "matcher": "startup",
         "hooks": [
           {
             "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$HOME/.claude/bootstrap/sync.ps1\"",
+            "timeout": 60
           }
         ]
       }
@@ -175,16 +169,6 @@
             "async": true
           }
         ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "PostToolUseFailure": [
@@ -196,16 +180,6 @@
             "command": "node -e \"const p=require('path');const r=(function(){var p=require('path'),f=require('fs'),o=require('os');var e=process.env.CLAUDE_PLUGIN_ROOT;if(e&&e.trim())return e.trim();var d=p.join(o.homedir(),'.claude');function L(x){try{return require(p.join(x,'scripts','lib','resolve-ecc-root')).resolveEccRoot()}catch(_){return null}}var r=L(d);if(r)return r;var s=['ecc','ecc@ecc','marketplaces/ecc','everything-claude-code','everything-claude-code@everything-claude-code','marketplaces/everything-claude-code'];for(var i=0;i<s.length;i++){r=L(p.join(d,'plugins',s[i]));if(r)return r}try{var g=['ecc','everything-claude-code'];for(var j=0;j<g.length;j++){var c=p.join(d,'plugins','cache',g[j]);var O=f.readdirSync(c);for(var k=0;k<O.length;k++){var q=p.join(c,O[k]);var V=f.readdirSync(q);for(var m=0;m<V.length;m++){r=L(p.join(q,V[m]));if(r)return r}}}}catch(_){}return d})();const s=p.join(r,'scripts/hooks/plugin-hook-bootstrap.js');process.env.CLAUDE_PLUGIN_ROOT=r;process.argv.splice(1,0,s);require(s)\" node scripts/hooks/run-with-flags.js post:mcp-health-check scripts/hooks/mcp-health-check.js standard,strict"
           }
         ]
-      },
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "Stop": [
@@ -214,7 +188,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"%USERPROFILE%/.claude/hooks/php-stop-check.js\""
+            "command": "node \"$HOME/.claude/hooks/php-stop-check.js\""
           }
         ]
       },
@@ -223,7 +197,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"%USERPROFILE%/.claude/hooks/doc-update-reminder.js\""
+            "command": "node \"$HOME/.claude/hooks/doc-update-reminder.js\""
           }
         ]
       },
@@ -289,15 +263,6 @@
             "async": true
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
       }
     ],
     "SessionEnd": [
@@ -311,100 +276,13 @@
             "async": true
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "%USERPROFILE%/.orca/agent-hooks/claude-hook.cmd",
-            "timeout": 10
-          }
-        ]
       }
     ]
   },
   "enableWorkflows": true,
   "statusLine": {
     "type": "command",
-    "command": "node \"%USERPROFILE%/.claude/plugins/ecc/scripts/hooks/ecc-statusline.js\""
+    "command": "node \"$HOME/.claude/plugins/ecc/scripts/hooks/ecc-statusline.js\""
   },
   "enabledPlugins": {
     "andrej-karpathy-skills@karpathy-skills": true,
@@ -416,7 +294,9 @@
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "autoresearch@autoresearch": true,
     "figma@claude-plugins-official": true,
-    "claude-ads@ai-marketing-hub-claude-ads": false
+    "claude-ads@ai-marketing-hub-claude-ads": false,
+    "brag@brag": true,
+    "hyperframes@hyperframes": true
   },
   "extraKnownMarketplaces": {
     "karpathy-skills": {
@@ -465,6 +345,18 @@
       "source": {
         "source": "github",
         "repo": "AgriciDaniel/claude-ads"
+      }
+    },
+    "brag": {
+      "source": {
+        "source": "github",
+        "repo": "latent-spaces/brag"
+      }
+    },
+    "hyperframes": {
+      "source": {
+        "source": "github",
+        "repo": "heygen-com/hyperframes"
       }
     }
   },
